@@ -248,7 +248,7 @@ export default function AuthCard() {
         <div className="bottom-links">
           {mode === "login" && (
             <div className="forgot-password">
-              <a href="/password" className="forgot-password">Forgot Password?</a>
+              <a href="/forgot-password" className="forgot-password">Forgot Password?</a>
             </div>
           )}
 

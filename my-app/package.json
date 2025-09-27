@@ -12,7 +12,7 @@
     "@types/node": "^16.18.126",
     "@types/react": "^19.1.11",
     "@types/react-dom": "^19.1.7",
-    "axios": "^1.11.0",
+    "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
     "buffer": "^6.0.3",
     "crypto-browserify": "^3.12.1",

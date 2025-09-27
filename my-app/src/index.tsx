@@ -13,7 +13,9 @@ import ProjectsPage from "./pages/Project";
 
 import AuthCard from "./auth/components/AuthCard";
 import PrivateRoute from "./auth/PrivateRoute";        
-import { AuthProvider } from "./auth/AuthProvider";     
+import { AuthProvider } from "./auth/AuthProvider";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";     
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
@@ -27,6 +29,8 @@ root.render(
         <Routes>
           {/* Public */}
           <Route path="/login" element={<AuthCard />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Protected*/}
           <Route

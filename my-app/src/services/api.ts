@@ -2,10 +2,7 @@ import axios from "axios";
 import { createUser, verifyLogin, signToken } from "../mocks/service.memory";
 
 // const API_BASE = "https://nodejs-serverless-function-express-rho-ashen.vercel.app";
-const API_BASE =
-  process.env.NODE_ENV === "development"
-    ? "" // React dev server will proxy to Vercel
-    : "https://nodejs-serverless-function-express-rho-ashen.vercel.app";
+const API_BASE = "https://toc-user-backend.vercel.app";
 
 // Authentication APIs
 export const authRegister = async (payload: {
@@ -20,6 +17,30 @@ export const authLogin = async (payload: { email: string; password: string }) =>
   const user = await verifyLogin(payload.email, payload.password);
   const token = `dev-${user.id}-${Date.now()}`;   // fake token
   return { token, user };
+};
+
+export const forgotPassword = async (data: {
+  email: string;
+}) => {
+  const response = await axios.post(`${API_BASE}/api/auth/password.Reset`, {
+    email: data.email,
+    action: "request-reset"
+  });
+  return response.data;
+};
+
+export const resetPassword = async (data: {
+  email: string;
+  token: string;
+  newPassword: string;
+}) => {
+  const response = await axios.post(`${API_BASE}/api/auth/password.Reset`, {
+    email: data.email,
+    action: "verify-token",
+    token: data.token,
+    newPassword: data.newPassword
+  });
+  return response.data;
 };
 
 

@@ -102,7 +102,7 @@ export default function Login() {
         <button type="submit" disabled={loading}>{loading ? "Please wait..." : (mode === "login" ? "Sign In" : "Create Account")}</button>
         {error && <p style={{ color: "crimson" }}>{error}</p>}
 
-        {mode === "login" && <p><Link to="/password">Forgot Password?</Link></p>}
+        {mode === "login" && <p><Link to="/forgot-password">Forgot Password?</Link></p>}
       </form>
     </div>
   );
