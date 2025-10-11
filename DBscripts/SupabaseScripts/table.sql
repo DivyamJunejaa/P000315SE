@@ -76,7 +76,7 @@ create table if not exists "PasswordResetTokens" (
 -- );
 
 create table if not exists "Subscription" (
-  subscription_ID varchar(255) character varying NOT NULL,
+  subscription_ID varchar(255) NOT NULL,
   email           varchar(255) not null references "User"(email) on delete cascade,
   plan_ID         varchar(25) not null,  
   status          subscription_status_enum not null,
@@ -89,22 +89,22 @@ create table if not exists "Subscription" (
   check (expires_at  is null or expires_at  >= start_date)
 );
 
-create table if not exists "Invoice" (
-  invoice_id      serial primary key,
-  subscription_id int not null references "Subscription"(subscription_id) on delete cascade,
-  email           varchar(255) not null references "User"(email) on delete cascade,
-  amount_cents    int not null check (amount_cents >= 0),
-  currency        varchar(10) not null check (currency ~ '^[A-Z]{3}$'),
-  period_start    timestamp,
-  period_end      timestamp,
-  issued_at       timestamp not null default current_timestamp,
-  due_at          timestamp,
-  status          invoice_status_enum not null,
-  pdf_url         text,
-  is_public       boolean not null default false,
-  check (period_end is null or period_start is null or period_end >= period_start),
-  check (due_at is null or due_at >= issued_at)
-);
+-- create table if not exists "Invoice" (
+--   invoice_id      serial primary key,
+--   subscription_id int not null references "Subscription"(subscription_id) on delete cascade,
+--   email           varchar(255) not null references "User"(email) on delete cascade,
+--   amount_cents    int not null check (amount_cents >= 0),
+--   currency        varchar(10) not null check (currency ~ '^[A-Z]{3}$'),
+--   period_start    timestamp,
+--   period_end      timestamp,
+--   issued_at       timestamp not null default current_timestamp,
+--   due_at          timestamp,
+--   status          invoice_status_enum not null,
+--   pdf_url         text,
+--   is_public       boolean not null default false,
+--   check (period_end is null or period_start is null or period_end >= period_start),
+--   check (due_at is null or due_at >= issued_at)
+-- );
 
 -- create table if not exists "Payment" (
 --   payment_id        serial primary key,
@@ -121,13 +121,13 @@ create table if not exists "Invoice" (
 -- =========================================================
 -- 4) PROJECTS
 -- =========================================================
--- create table if not exists "Project" (
---   project_id   serial primary key,
---   email        varchar(255) not null references "User"(email) on delete cascade,
---   title        varchar(255) not null check (length(btrim(title)) > 0),
---   updated_at   timestamp not null default current_timestamp,
---   created_at   timestamp not null default current_timestamp
--- );
+create table if not exists "Project" (
+  project_id   serial primary key,
+  email        varchar(255) not null references "User"(email) on delete cascade,
+  title        varchar(255) not null check (length(btrim(title)) > 0),
+  updated_at   timestamp not null default current_timestamp,
+  created_at   timestamp not null default current_timestamp
+);
 
 -- create table if not exists "ProjectCanvas" (
 --   project_id   int primary key references "Project"(project_id) on delete cascade,
@@ -135,18 +135,18 @@ create table if not exists "Invoice" (
 --   updated_at   timestamp not null default current_timestamp
 -- );
 
--- create table if not exists "ExportFile" (
---   file_id      serial primary key,
---   project_id   int not null references "Project"(project_id) on delete cascade,
---   email        varchar(255) not null references "User"(email) on delete cascade,
---   format       varchar(50) not null check (format in ('PDF','PNG','SVG','DOCX')),
---   download_url text,
---   filename     varchar(255),
---   status       export_status_enum not null default 'queued',
---   created_at   timestamp not null default current_timestamp,
---   updated_at   timestamp not null default current_timestamp,
---   expires_at   timestamp
--- );
+create table if not exists "ExportFile" (
+  file_id      serial primary key,
+  project_id   int not null references "Project"(project_id) on delete cascade,
+  email        varchar(255) not null references "User"(email) on delete cascade,
+  format       varchar(50) not null check (format in ('PDF','PNG','SVG','DOCX')),
+  download_url text,
+  filename     varchar(255),
+  status       export_status_enum not null default 'queued',
+  created_at   timestamp not null default current_timestamp,
+  updated_at   timestamp not null default current_timestamp,
+  expires_at   timestamp
+);
 
 -- =========================================================
 -- 5) INDEXES
@@ -155,8 +155,8 @@ drop index if exists ux_sub_one_active;
 create unique index ux_sub_one_active on "Subscription"(email)
   where status in ('trialing','active','past_due');
 
-create index if not exists ix_invoice_email_status on "Invoice"(email, status);
--- create index if not exists ix_project_email        on "Project"(email);
+-- create index if not exists ix_invoice_email_status on "Invoice"(email, status);
+create index if not exists ix_project_email        on "Project"(email);
 -- create index if not exists ix_export_project       on "ExportFile"(project_id);
 -- create index if not exists ix_export_status        on "ExportFile"(status);
 create index if not exists ix_authprovider_email   on "UserAuthProvider"(email);
@@ -178,12 +178,12 @@ end; $$ language plpgsql;
 
 drop trigger if exists trg_userprofile_updated  on "UserProfile";
 drop trigger if exists trg_subscription_updated on "Subscription";
--- drop trigger if exists trg_project_updated      on "Project";
+drop trigger if exists trg_project_updated      on "Project";
 -- drop trigger if exists trg_canvas_updated       on "ProjectCanvas";
 -- drop trigger if exists trg_export_updated       on "ExportFile";
 
 create trigger trg_userprofile_updated  before update on "UserProfile"   for each row execute procedure set_updated_at();
 create trigger trg_subscription_updated before update on "Subscription"  for each row execute procedure set_updated_at();
--- create trigger trg_project_updated      before update on "Project"       for each row execute procedure set_updated_at();
+create trigger trg_project_updated      before update on "Project"       for each row execute procedure set_updated_at();
 -- create trigger trg_canvas_updated       before update on "ProjectCanvas" for each row execute procedure set_updated_at();
 -- create trigger trg_export_updated       before update on "ExportFile"    for each row execute procedure set_updated_at();
