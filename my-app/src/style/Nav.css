@@ -98,3 +98,299 @@
 .menu-content a:hover {
   background: #f0f0f0;
 }
+
+/* Plan Badge in Menu */
+.menu-plan-badge {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.plan-label {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.plan-label.free {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.plan-label.pro {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.plan-label.premium {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(245, 87, 108, 0.3);
+}
+
+/* Menu Icon */
+.menu-icon {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+/* Menu Link Button (for Support) */
+.menu-link-button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 12px 16px;
+  color: #333;
+  background: none;
+  border: none;
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.menu-link-button:hover {
+  background-color: #f8f9fa;
+}
+
+.menu-link-button:active {
+  background-color: #e9ecef;
+}
+
+/* Locked Menu Item (for free users) */
+.menu-item-locked {
+  color: #999;
+  cursor: pointer;
+  justify-content: space-between;
+}
+
+.menu-item-locked:hover {
+  background-color: #f5f5f5;
+}
+
+.lock-badge {
+  font-size: 11px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+/* Upgrade Link Style */
+.menu-upgrade-link {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  font-weight: 600;
+  margin: 8px 12px;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s ease;
+}
+
+.menu-upgrade-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+}
+
+/* Enhanced Menu Content Styles */
+.menu-content a {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  color: #333;
+  text-decoration: none;
+  font-size: 16px;
+  transition: background-color 0.2s ease;
+}
+
+.menu-content a:hover {
+  background-color: #f8f9fa;
+}
+
+.menu-content a:active {
+  background-color: #e9ecef;
+}
+
+/* Upgrade Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-content {
+  background: white;
+  padding: 32px;
+  border-radius: 16px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-content h2 {
+  margin: 0 0 16px 0;
+  font-size: 24px;
+  color: #333;
+}
+
+.modal-content p {
+  color: #666;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.upgrade-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.plan-option {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 12px;
+  border: 2px solid #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.plan-option:hover {
+  border-color: #667eea;
+  transform: translateY(-2px);
+}
+
+.plan-option.premium {
+  background: linear-gradient(135deg, #f8f9fa 0%, #fff5f7 100%);
+  border-color: #f5576c;
+}
+
+.plan-option h3 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.plan-option p {
+  margin: 6px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.upgrade-btn,
+.cancel-btn {
+  flex: 1;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.upgrade-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.upgrade-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.cancel-btn {
+  background: transparent;
+  color: #666;
+  border: 1px solid #ddd;
+}
+
+.cancel-btn:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .menu-plan-badge {
+    padding: 10px 12px;
+  }
+
+  .plan-label {
+    font-size: 11px;
+    padding: 5px 12px;
+  }
+
+  .menu-content a,
+  .menu-link-button {
+    padding: 10px 12px;
+    font-size: 15px;
+  }
+
+  .menu-upgrade-link {
+    margin: 6px 10px;
+    padding: 10px 12px;
+  }
+
+  .modal-content {
+    padding: 24px;
+    width: 95%;
+  }
+
+  .upgrade-options {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .upgrade-btn,
+  .cancel-btn {
+    width: 100%;
+  }
+}

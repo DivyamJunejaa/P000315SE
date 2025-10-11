@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Data } from "../pages/App";
 import { exportVisualDiagram } from "../utils/exportUtils";
 import "../style/Visual.css";
+import { useNavigate } from "react-router-dom";
 
 type VisualProps = {
   data: Data;
@@ -23,6 +24,8 @@ type ColumnConfig = {
   field: keyof Data;
   cards: CardConfig[];
 };
+
+
 
 // Loading Spinner Component
 const LoadingSpinner = () => {
@@ -87,6 +90,8 @@ export default function VisualPanel({
   onFieldAdded = () => {},
   isLoading = false
 }: VisualProps) {
+
+  const navigate = useNavigate();
   console.log('=== Visual Render ===');
   console.log('columnColors prop received:', columnColors);
   const [showCustomize, setShowCustomize] = useState(false);
@@ -311,16 +316,23 @@ export default function VisualPanel({
   };
 
   const handleExport = async () => {
-    if (exportRef.current) {
-      try {
-        await exportVisualDiagram(exportRef.current, data.projectTitle || 'Theory-of-Change');
-        setToast({ message: "Diagram exported successfully!", type: "success" });
-      } catch (error) {
-        console.error('Export failed:', error);
-        setToast({ message: "Export failed. Please try again.", type: "error" });
-      }
+  if (exportRef.current) {
+    try {
+      await exportVisualDiagram(
+        exportRef.current, 
+        data.projectTitle || 'Theory-of-Change',
+        () => {
+          console.log('🚀 Redirecting to subscription page...');
+          navigate('/plans');
+        }
+      );
+      
+    } catch (error) {
+      console.error('Export failed:', error);
+      setToast({ message: "Export failed. Please try again.", type: "error" });
     }
-  };
+  }
+};
 
   if (isLoading) {
     return (

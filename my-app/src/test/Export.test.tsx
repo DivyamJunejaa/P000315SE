@@ -12,8 +12,10 @@ const mockJsPDF = jsPDF as unknown as jest.Mock;
 
 // Global cleanup function
 const cleanupDOM = () => {
-  // Remove all modals
-  const modals = document.querySelectorAll('.export-modal-overlay');
+  // Remove all modal types
+  const modals = document.querySelectorAll(
+    '.export-modal-overlay, .upgrade-modal-overlay, .modal-overlay, .export-modal, .upgrade-modal'
+  );
   modals.forEach(modal => {
     if (modal && modal.parentNode) {
       modal.parentNode.removeChild(modal);
@@ -33,8 +35,15 @@ const cleanupDOM = () => {
 };
 
 describe('Export Modal', () => {
+  beforeEach(() => {
+    // Set user plan to pro to allow exports
+    localStorage.setItem('userPlan', 'pro');
+    localStorage.setItem('planId', 'price_pro_monthly');
+  });
+
   afterEach(() => {
     cleanupDOM();
+    localStorage.clear();
   });
 
   it('should display export modal when export is triggered', async () => {
@@ -128,11 +137,93 @@ describe('Export Modal', () => {
   });
 });
 
+describe('Export Access Control', () => {
+  afterEach(() => {
+    cleanupDOM();
+    localStorage.clear();
+  });
+
+  it('should show upgrade modal for free users', async () => {
+    localStorage.setItem('userPlan', 'free');
+
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+
+    exportVisualDiagram(element, 'test-diagram');
+    await new Promise(resolve => setTimeout(resolve, 150));
+
+    // Look for any modal containing "Premium Feature" text
+    const bodyText = document.body.textContent || '';
+    expect(bodyText).toContain('Premium Feature');
+    
+    // Should NOT contain export format selection
+    expect(bodyText).not.toContain('Choose your preferred export format');
+
+    // Clean up - find and click any close/cancel button
+    const buttons = Array.from(document.querySelectorAll('button'));
+    const closeBtn = buttons.find(btn => 
+      btn.textContent?.includes('Maybe Later') || 
+      btn.textContent?.includes('Cancel') ||
+      btn.classList.contains('cancel')
+    );
+    if (closeBtn) {
+      closeBtn.click();
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 50));
+  });
+
+  it('should allow export for pro users', async () => {
+    localStorage.setItem('userPlan', 'pro');
+
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+
+    const exportPromise = exportVisualDiagram(element, 'test-diagram');
+    await new Promise(resolve => setTimeout(resolve, 150));
+
+    const exportModal = document.querySelector('.export-modal');
+    const bodyText = document.body.textContent || '';
+    
+    expect(exportModal).toBeTruthy();
+    expect(bodyText).toContain('Choose your preferred export format');
+    expect(bodyText).not.toContain('Premium Feature');
+
+    const cancelBtn = document.querySelector('.cancel') as HTMLElement;
+    cancelBtn?.click();
+    await exportPromise;
+  });
+
+  it('should allow export for premium users', async () => {
+    localStorage.setItem('userPlan', 'premium');
+
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+
+    const exportPromise = exportVisualDiagram(element, 'test-diagram');
+    await new Promise(resolve => setTimeout(resolve, 150));
+
+    const exportModal = document.querySelector('.export-modal');
+    const bodyText = document.body.textContent || '';
+    
+    expect(exportModal).toBeTruthy();
+    expect(bodyText).toContain('Choose your preferred export format');
+    expect(bodyText).not.toContain('Premium Feature');
+
+    const cancelBtn = document.querySelector('.cancel') as HTMLElement;
+    cancelBtn?.click();
+    await exportPromise;
+  });
+});
+
 describe('Export Functionality', () => {
   let mockCanvas: Partial<HTMLCanvasElement>;
   let mockPDF: any;
 
   beforeEach(() => {
+    // Set user plan to pro to allow exports
+    localStorage.setItem('userPlan', 'pro');
+    
     // Reset mocks
     jest.clearAllMocks();
     
@@ -155,6 +246,7 @@ describe('Export Functionality', () => {
 
   afterEach(() => {
     cleanupDOM();
+    localStorage.clear();
     jest.restoreAllMocks();
   });
 
@@ -239,7 +331,6 @@ describe('Export Functionality', () => {
 
     // Styles should be restored after export
     expect(card.style.height).toBe('100px');
-    // Overflow is set to 'visible' during export and should be restored
     expect(card.style.overflow).toMatch(/hidden|visible|/);
   });
 
@@ -266,7 +357,6 @@ describe('Export Functionality', () => {
   it('should call html2canvas with correct options', async () => {
     const element = document.createElement('div');
     
-    // Mock scrollWidth and scrollHeight using Object.defineProperty
     Object.defineProperty(element, 'scrollWidth', {
       configurable: true,
       value: 1000
@@ -303,7 +393,6 @@ describe('Export Functionality', () => {
     const element = document.createElement('div');
     document.body.appendChild(element);
 
-    // Mock createElement to track link creation
     const originalCreateElement = document.createElement.bind(document);
     const linkClickSpy = jest.fn();
     
@@ -318,7 +407,6 @@ describe('Export Functionality', () => {
     const exportPromise = exportVisualDiagram(element, 'test-diagram');
     await new Promise(resolve => setTimeout(resolve, 0));
 
-    // PNG is selected by default
     const exportBtn = document.querySelector('.export') as HTMLElement;
     exportBtn?.click();
 
@@ -337,7 +425,6 @@ describe('Export Functionality', () => {
     const exportPromise = exportVisualDiagram(element, 'test-diagram');
     await new Promise(resolve => setTimeout(resolve, 0));
 
-    // Select PDF format
     const pdfButton = document.querySelector('[data-format="pdf"]') as HTMLElement;
     pdfButton?.click();
 
@@ -448,7 +535,6 @@ describe('Export Functionality', () => {
     const card = document.createElement('div');
     card.className = 'flow-card';
     
-    // Set initial styles
     card.style.height = '100px';
     card.style.minHeight = '50px';
     card.style.maxHeight = '200px';
@@ -465,17 +551,16 @@ describe('Export Functionality', () => {
 
     await exportPromise;
 
-    // Check that critical styles are restored
     expect(card.style.height).toBe('100px');
     expect(card.style.minHeight).toBe('50px');
     expect(card.style.maxHeight).toBe('200px');
-    // Overflow might be restored to different values
     expect(card.style.overflow).toMatch(/hidden|visible|/);
   });
 });
 
 describe('Export Edge Cases', () => {
   beforeEach(() => {
+    localStorage.setItem('userPlan', 'pro');
     jest.clearAllMocks();
     
     const mockCanvas = {
@@ -489,6 +574,7 @@ describe('Export Edge Cases', () => {
 
   afterEach(() => {
     cleanupDOM();
+    localStorage.clear();
     jest.restoreAllMocks();
   });
 

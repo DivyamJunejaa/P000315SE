@@ -1,4 +1,4 @@
-// src/test/VisualPanelCustomization.test.tsx
+
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import VisualPanel from '../components/VisualPanel';
@@ -53,13 +53,13 @@ describe('VisualPanel - Customization Mode', () => {
   test('toggles customization mode', async () => {
     render(<VisualPanel data={createMockData()} updateField={jest.fn()} />);
     
-    const customizeBtn = screen.getByText('Customize');
+    const customizeBtn = screen.getByText('Customise');
     await userEvent.click(customizeBtn);
     
-    expect(screen.getByText('Hide Customization')).toBeInTheDocument();
+    expect(screen.getByText('Hide Customisation')).toBeInTheDocument();
     
-    await userEvent.click(screen.getByText('Hide Customization'));
-    expect(screen.getByText('Customize')).toBeInTheDocument();
+    await userEvent.click(screen.getByText('Hide Customisation'));
+    expect(screen.getByText('Customise')).toBeInTheDocument();
   });
 
   test('textareas are disabled when not customizing', () => {
@@ -70,7 +70,7 @@ describe('VisualPanel - Customization Mode', () => {
 
   test('textareas are enabled when customizing', async () => {
     render(<VisualPanel data={createMockData()} updateField={jest.fn()} />);
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     const textareas = screen.getAllByRole('textbox');
     textareas.forEach(ta => expect(ta).not.toBeDisabled());
   });
@@ -89,7 +89,7 @@ describe('VisualPanel - Card Management', () => {
       />
     );
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     const addButtons = screen.getAllByRole('button', { name: '+' });
     const cardAddButtons = addButtons.filter(btn => 
@@ -110,10 +110,10 @@ describe('VisualPanel - Card Management', () => {
     
     render(<VisualPanel data={maxData} updateField={jest.fn()} />);
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     await waitFor(() => {
-      expect(screen.getByText('Hide Customization')).toBeInTheDocument();
+      expect(screen.getByText('Hide Customisation')).toBeInTheDocument();
     });
     
     const addButtons = screen.getAllByRole('button', { name: '+' });
@@ -137,7 +137,7 @@ describe('VisualPanel - Card Management', () => {
     const mockUpdateField = jest.fn();
     render(<VisualPanel data={data} updateField={mockUpdateField} />);
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     const removeButtons = screen.getAllByRole('button', { name: '−' });
     await userEvent.click(removeButtons[0]);
@@ -149,7 +149,7 @@ describe('VisualPanel - Card Management', () => {
     const mockUpdateField = jest.fn();
     render(<VisualPanel data={createMockData()} updateField={mockUpdateField} />);
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     // No remove buttons should show when each column has only 1 card
     const removeButtons = screen.queryAllByRole('button', { name: '−' }).filter(btn =>
@@ -162,7 +162,7 @@ describe('VisualPanel - Card Management', () => {
     const mockUpdateField = jest.fn();
     render(<VisualPanel data={createMockData()} updateField={mockUpdateField} />);
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     const textareas = screen.getAllByRole('textbox');
     await userEvent.clear(textareas[0]);
@@ -185,10 +185,10 @@ describe('VisualPanel - Cloud Management', () => {
       />
     );
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     await waitFor(() => {
-      expect(screen.getByText('Hide Customization')).toBeInTheDocument();
+      expect(screen.getByText('Hide Customisation')).toBeInTheDocument();
     });
     
     const cloudButtons = screen.getAllByRole('button', { name: '+' }).filter(btn => 
@@ -209,10 +209,10 @@ describe('VisualPanel - Cloud Management', () => {
     
     render(<VisualPanel data={maxData} updateField={jest.fn()} />);
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     await waitFor(() => {
-      expect(screen.getByText('Hide Customization')).toBeInTheDocument();
+      expect(screen.getByText('Hide Customisation')).toBeInTheDocument();
     });
     
     const cloudButtons = screen.queryAllByRole('button', { name: '+' }).filter(btn => 
@@ -234,7 +234,7 @@ describe('VisualPanel - Cloud Management', () => {
     const mockUpdateField = jest.fn();
     render(<VisualPanel data={data} updateField={mockUpdateField} />);
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     const removeButtons = screen.getAllByRole('button', { name: '−' }).filter(btn =>
       btn.classList.contains('remove-cloud-btn')
@@ -247,7 +247,7 @@ describe('VisualPanel - Cloud Management', () => {
   test('does not show remove button for single cloud', async () => {
     render(<VisualPanel data={createMockData()} updateField={jest.fn()} />);
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     const removeButtons = screen.queryAllByRole('button', { name: '−' }).filter(btn =>
       btn.classList.contains('remove-cloud-btn')
@@ -260,7 +260,7 @@ describe('VisualPanel - Cloud Management', () => {
     const mockUpdateField = jest.fn();
     render(<VisualPanel data={createMockData()} updateField={mockUpdateField} />);
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     const cloudTextareas = document.querySelectorAll('.cloud-value textarea');
     await userEvent.clear(cloudTextareas[0] as HTMLElement);
@@ -283,10 +283,10 @@ describe('VisualPanel - Cloud Management', () => {
       />
     );
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     await waitFor(() => {
-      expect(screen.getByText('Hide Customization')).toBeInTheDocument();
+      expect(screen.getByText('Hide Customisation')).toBeInTheDocument();
     });
     
     const cloudButtons = screen.getAllByRole('button', { name: '+' }).filter(btn => 
@@ -312,7 +312,7 @@ describe('VisualPanel - Cloud Management', () => {
       />
     );
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     const cloudButtons = screen.getAllByRole('button', { name: '+' }).filter(btn => 
       btn.classList.contains('add-cloud-btn')
@@ -332,7 +332,7 @@ describe('VisualPanel - Cloud Management', () => {
     const mockUpdateField = jest.fn();
     render(<VisualPanel data={data} updateField={mockUpdateField} />);
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     const removeButtons = screen.getAllByRole('button', { name: '−' }).filter(btn =>
       btn.classList.contains('remove-cloud-btn')
@@ -343,7 +343,7 @@ describe('VisualPanel - Cloud Management', () => {
   });
 });
 
-describe('VisualPanel - Color Customization', () => {
+describe('VisualPanel - Color Customisation', () => {
   test('updates column background color with callback', async () => {
     const mockUpdateColumnColors = jest.fn();
     
@@ -355,7 +355,7 @@ describe('VisualPanel - Color Customization', () => {
       />
     );
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     const colorPickers = document.querySelectorAll('.color-picker-circle');
     fireEvent.change(colorPickers[0], { target: { value: '#FF0000' } });
@@ -374,7 +374,7 @@ describe('VisualPanel - Color Customization', () => {
       />
     );
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     const colorPickers = document.querySelectorAll('.color-picker-circle');
     fireEvent.change(colorPickers[1], { target: { value: '#000000' } });
@@ -390,12 +390,12 @@ describe('VisualPanel - Color Customization', () => {
       />
     );
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     const colorPickers = document.querySelectorAll('.color-picker-circle');
     fireEvent.change(colorPickers[0], { target: { value: '#FF0000' } });
     
-    expect(screen.getByText('Hide Customization')).toBeInTheDocument();
+    expect(screen.getByText('Hide Customisation')).toBeInTheDocument();
   });
 
   test('updates cloud background color with callback', async () => {
@@ -409,7 +409,7 @@ describe('VisualPanel - Color Customization', () => {
       />
     );
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     const cloudColorPickers = document.querySelectorAll('.cloud-color-picker');
     fireEvent.change(cloudColorPickers[0], { target: { value: '#00ff00' } });
@@ -428,7 +428,7 @@ describe('VisualPanel - Color Customization', () => {
       />
     );
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     const cloudColorPickers = document.querySelectorAll('.cloud-color-picker');
     fireEvent.change(cloudColorPickers[1], { target: { value: '#ffffff' } });
@@ -444,12 +444,12 @@ describe('VisualPanel - Color Customization', () => {
       />
     );
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     const cloudColorPickers = document.querySelectorAll('.cloud-color-picker');
     fireEvent.change(cloudColorPickers[0], { target: { value: '#00ff00' } });
     
-    expect(screen.getByText('Hide Customization')).toBeInTheDocument();
+    expect(screen.getByText('Hide Customisation')).toBeInTheDocument();
   });
 
   test('uses provided columnColors', () => {
@@ -725,7 +725,7 @@ describe('VisualPanel - Edge Cases', () => {
   test('toast auto-closes after 3 seconds', async () => {
     render(<VisualPanel data={createMockData()} updateField={jest.fn()} />);
     
-    await userEvent.click(screen.getByText('Customize'));
+    await userEvent.click(screen.getByText('Customise'));
     
     const addButtons = screen.getAllByRole('button', { name: '+' });
     const cardAddButtons = addButtons.filter(btn => 

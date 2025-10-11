@@ -50,6 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("userId");
+    localStorage.removeItem('subscriptionData');
+    localStorage.removeItem('userPlan');
+    localStorage.removeItem('planId');
+    localStorage.removeItem('projectId');
   };
 
   const value = useMemo(() => ({ user, token, isAuthenticated: !!token, login, logout, setUser, loading }), [user, token, loading]);

@@ -6,7 +6,6 @@ import "./index.css";
 import App from "./pages/App";
 import ProfilePage from "./pages/profile";
 import Navbar from "./components/Nav";
-import UserListPage from "./pages/UsersList";
 import ProjectCreate from "./pages/Project";
 import ProjectsPage from "./pages/Project";
 
@@ -71,14 +70,7 @@ root.render(
               </PrivateRoute>
             }
           />
-          <Route
-            path="/users"
-            element={
-              <PrivateRoute>
-                <UserListPage />
-              </PrivateRoute>
-            }
-          />
+          
           <Route
             path="/project"
             element={

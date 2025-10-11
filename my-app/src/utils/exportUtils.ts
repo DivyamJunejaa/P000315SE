@@ -2,6 +2,82 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import "../style/Export.css"
 
+// Get user plan from localStorage
+const getUserPlanFromStorage = (): 'free' | 'pro' | 'premium' => {
+  const userPlan = localStorage.getItem('userPlan');
+  if (userPlan === 'pro' || userPlan === 'premium') {
+    return userPlan as 'free' | 'pro' | 'premium';
+  }
+  return 'free';
+};
+
+// Check if user has export access
+const hasExportAccess = (): boolean => {
+  const userPlan = getUserPlanFromStorage();
+  const hasAccess = userPlan === 'pro' || userPlan === 'premium';
+  
+  console.log('🔒 Export Access Check:', {
+    userPlan,
+    hasAccess,
+    storedPlan: localStorage.getItem('userPlan'),
+    storedPlanId: localStorage.getItem('planId')
+  });
+  
+  return hasAccess;
+};
+
+// Subscription check modal
+const showSubscriptionRequiredModal = (onUpgradeClick?: () => void): Promise<void> => {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'export-modal-overlay';
+    
+    const modal = document.createElement('div');
+    modal.className = 'export-modal subscription-modal';
+    
+    modal.innerHTML = `
+      <div class="subscription-required-content">
+        <div class="lock-icon">🔒</div>
+        <h3>Premium Feature</h3>
+        <p>Export functionality is available for Pro and Premium subscribers only.</p>
+        <div class="feature-benefits">
+          <div class="benefit-item">✓ Export as PNG</div>
+          <div class="benefit-item">✓ Export as PDF</div>
+          <div class="benefit-item">✓ High-quality output</div>
+        </div>
+        <div class="export-modal-actions">
+          <button class="export-modal-btn upgrade-btn">Upgrade Now</button>
+          <button class="export-modal-btn cancel">Maybe Later</button>
+        </div>
+      </div>
+    `;
+    
+    
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    
+    modal.querySelector('.upgrade-btn')?.addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      if (onUpgradeClick) {
+        onUpgradeClick(); // Navigate to /subscription
+      }
+      resolve();
+    });
+    
+    modal.querySelector('.cancel')?.addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      resolve();
+    });
+    
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        document.body.removeChild(overlay);
+        resolve();
+      }
+    });
+  });
+};
+
 const showExportModal = (): Promise<string | null> => {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
@@ -62,8 +138,24 @@ const showExportModal = (): Promise<string | null> => {
   });
 };
 
-export const exportVisualDiagram = async (element: HTMLElement, filename: string = 'theory-of-change') => {
+// Main export function - READS FROM LOCALSTORAGE
+export const exportVisualDiagram = async (
+  element: HTMLElement, 
+  filename: string = 'theory-of-change',
+  onUpgradeClick?: () => void
+) => {
   try {
+    // Check export access from localStorage
+    console.log('🚀 Export initiated');
+    
+    if (!hasExportAccess()) {
+      console.log('❌ User does not have export access - showing upgrade modal');
+      await showSubscriptionRequiredModal(onUpgradeClick);
+      return; // Stop execution if user doesn't have access
+    }
+    
+    console.log('✅ User has export access - proceeding with export');
+
     const format = await showExportModal();
     
     if (!format) {
@@ -323,6 +415,12 @@ export const exportVisualDiagram = async (element: HTMLElement, filename: string
     // Restore controls
     customizeControls.forEach((el) => {
       (el as HTMLElement).style.display = '';
+    });
+    
+    // Cleanup textarea replacements
+    textareaReplacements.forEach(({ textarea, replacement }) => {
+      replacement.remove();
+      textarea.style.display = '';
     });
     
     if (format.toLowerCase() === 'pdf') {

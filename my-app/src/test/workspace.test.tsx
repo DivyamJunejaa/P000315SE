@@ -1,23 +1,37 @@
-// FIXED TEST FILE - workspace.test.tsx
-
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
-import ProjectsPage from "../pages/Project";
-import FormPanel from "../components/FormPanel";
-import VisualPanel from "../components/VisualPanel";
-import { createTocProject, fetchUserTocs } from "../services/api";
 
-jest.mock("../services/api");
-const mockCreateTocProject = createTocProject as jest.MockedFunction<typeof createTocProject>;
-const mockFetchUserTocs = fetchUserTocs as jest.MockedFunction<typeof fetchUserTocs>;
+// Mock dependencies BEFORE imports
+const mockNavigate = jest.fn();
+const mockLocation = { pathname: '/projects', search: '', hash: '', state: null, key: 'default' };
 
-jest.mock("react-router-dom");
-import { mockNavigate } from "../__mocks__/react-router-dom";
+jest.mock("react-router-dom", () => ({
+  useNavigate: () => mockNavigate,
+  useLocation: () => mockLocation,
+  BrowserRouter: ({ children }: any) => <div>{children}</div>,
+  Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>,
+}));
+
+// Mock API services
+const mockCreateTocProject = jest.fn();
+const mockFetchUserTocs = jest.fn();
+const mockFetchSubscription = jest.fn();
+
+jest.mock("../services/api", () => ({
+  createTocProject: (...args: any[]) => mockCreateTocProject(...args),
+  fetchUserTocs: (...args: any[]) => mockFetchUserTocs(...args),
+  fetchSubscription: (...args: any[]) => mockFetchSubscription(...args),
+}));
 
 jest.mock('../utils/exportUtils', () => ({
   exportVisualDiagram: jest.fn(),
 }));
+
+// Now import components
+import ProjectsPage from "../pages/Project";
+import FormPanel from "../components/FormPanel";
+import VisualPanel from "../components/VisualPanel";
 
 describe("ProjectsPage Component", () => {
   beforeEach(() => {
@@ -25,6 +39,12 @@ describe("ProjectsPage Component", () => {
     mockNavigate.mockClear();
     localStorage.clear();
     localStorage.setItem("userId", "test-user-123");
+    
+    // Default mock for subscription - free user
+    mockFetchSubscription.mockResolvedValue({
+      success: true,
+      data: null,
+    });
   });
 
   describe("Initial Rendering", () => {
@@ -41,6 +61,8 @@ describe("ProjectsPage Component", () => {
 
     test("shows loading spinner while fetching projects", () => {
       mockFetchUserTocs.mockImplementation(() => new Promise(() => {}));
+      mockFetchSubscription.mockImplementation(() => new Promise(() => {}));
+      
       render(<ProjectsPage />);
       expect(screen.getByText(/loading projects/i)).toBeInTheDocument();
     });
@@ -74,6 +96,21 @@ describe("ProjectsPage Component", () => {
       await waitFor(() => {
         expect(screen.getByText("Project 1")).toBeInTheDocument();
         expect(screen.getByText("Project 2")).toBeInTheDocument();
+      });
+    });
+
+    test("displays plan information", async () => {
+      mockFetchUserTocs.mockResolvedValue({
+        success: true,
+        data: { projects: [] },
+        message: "",
+      });
+
+      render(<ProjectsPage />);
+      
+      await waitFor(() => {
+        expect(screen.getByText(/free plan/i)).toBeInTheDocument();
+        expect(screen.getByText(/0 \/ 3 projects/i)).toBeInTheDocument();
       });
     });
   });
@@ -134,26 +171,21 @@ describe("ProjectsPage Component", () => {
       const input = screen.getByPlaceholderText(/project name/i);
       const saveBtn = screen.getByRole("button", { name: /^save$/i });
       
-      // Button should be disabled when empty
       expect(saveBtn).toBeDisabled();
       
-      // Type a space to enable button, then clear it
       await userEvent.type(input, "a");
       await userEvent.clear(input);
       
-      // Now button should be disabled again
       expect(saveBtn).toBeDisabled();
     });
 
     test("shows error for project name with only spaces", async () => {
-  const input = screen.getByPlaceholderText(/project name/i);
-  await userEvent.type(input, "   ");
-  
-  const saveBtn = screen.getByRole("button", { name: /^save$/i });
-  
-  // Button should be DISABLED when input has only spaces
-  expect(saveBtn).toBeDisabled();
-});
+      const input = screen.getByPlaceholderText(/project name/i);
+      await userEvent.type(input, "   ");
+      
+      const saveBtn = screen.getByRole("button", { name: /^save$/i });
+      expect(saveBtn).toBeDisabled();
+    });
 
     test("shows error for project name less than 3 characters", async () => {
       const input = screen.getByPlaceholderText(/project name/i);
@@ -213,25 +245,21 @@ describe("ProjectsPage Component", () => {
     });
 
     test("clears validation error when user starts typing", async () => {
-  const input = screen.getByPlaceholderText(/project name/i);
-  const saveBtn = screen.getByRole("button", { name: /^save$/i });
-  
-  // Type too-short name and click save to trigger error
-  await userEvent.type(input, "AB");
-  fireEvent.click(saveBtn);
-  
-  // Wait for error to appear
-  const errorMessage = await screen.findByText(/must be at least 3 characters/i, {}, { timeout: 3000 });
-  expect(errorMessage).toBeInTheDocument();
+      const input = screen.getByPlaceholderText(/project name/i);
+      const saveBtn = screen.getByRole("button", { name: /^save$/i });
+      
+      await userEvent.type(input, "AB");
+      fireEvent.click(saveBtn);
+      
+      const errorMessage = await screen.findByText(/must be at least 3 characters/i, {}, { timeout: 3000 });
+      expect(errorMessage).toBeInTheDocument();
 
-  // Type more to make it valid
-  await userEvent.type(input, "C Valid Project");
-  
-  // Error should disappear
-  await waitFor(() => {
-    expect(screen.queryByText(/must be at least 3 characters/i)).not.toBeInTheDocument();
-  }, { timeout: 2000 });
-});
+      await userEvent.type(input, "C Valid Project");
+      
+      await waitFor(() => {
+        expect(screen.queryByText(/must be at least 3 characters/i)).not.toBeInTheDocument();
+      }, { timeout: 2000 });
+    });
   });
 
   describe("Project Creation", () => {
@@ -354,6 +382,110 @@ describe("ProjectsPage Component", () => {
     });
   });
 
+  describe("Subscription and Plan Limits", () => {
+    test("shows upgrade modal when free user reaches project limit", async () => {
+      mockFetchUserTocs.mockResolvedValue({
+        success: true,
+        data: {
+          projects: [
+            { projectId: "1", projectName: "Project 1" },
+            { projectId: "2", projectName: "Project 2" },
+            { projectId: "3", projectName: "Project 3" },
+          ],
+        },
+        message: "",
+      });
+
+      render(<ProjectsPage />);
+      await waitFor(() => screen.getByRole("button", { name: /create project/i }));
+
+      const createBtn = screen.getByRole("button", { name: /create project/i });
+      
+      // The button should NOT be disabled - button is always enabled
+      expect(createBtn).not.toBeDisabled();
+      
+      // Click the button - based on actual behavior, it opens the form
+      fireEvent.click(createBtn);
+      
+      // The form opens (this is the actual behavior based on the rendered output)
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/project name/i)).toBeInTheDocument();
+      });
+      
+      // Now try to create a project - this should show the modal
+      const input = screen.getByPlaceholderText(/project name/i);
+      await userEvent.type(input, "New Project");
+      
+      const saveBtn = screen.getByRole("button", { name: /^save$/i });
+      fireEvent.click(saveBtn);
+      
+      // The modal should appear when trying to save
+      await waitFor(() => {
+        expect(screen.getByText(/project limit reached/i)).toBeInTheDocument();
+      }, { timeout: 2000 });
+    });
+
+    test("pro users can create up to 7 projects", async () => {
+      mockFetchSubscription.mockResolvedValue({
+        success: true,
+        data: {
+          subscriptionId: "sub_123",
+          email: "test@example.com",
+          planId: "price_pro_monthly",
+          status: "active",
+          startDate: "2024-01-01",
+          renewalDate: "2024-02-01",
+          expiresAt: null,
+          autoRenew: true,
+          updatedAt: "2024-01-01",
+        },
+      });
+
+      mockFetchUserTocs.mockResolvedValue({
+        success: true,
+        data: { projects: [] },
+        message: "",
+      });
+
+      render(<ProjectsPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/pro plan/i)).toBeInTheDocument();
+        expect(screen.getByText(/0 \/ 7 projects/i)).toBeInTheDocument();
+      });
+    });
+
+    test("premium users have unlimited projects", async () => {
+      mockFetchSubscription.mockResolvedValue({
+        success: true,
+        data: {
+          subscriptionId: "sub_123",
+          email: "test@example.com",
+          planId: "price_premium_monthly",
+          status: "active",
+          startDate: "2024-01-01",
+          renewalDate: "2024-02-01",
+          expiresAt: null,
+          autoRenew: true,
+          updatedAt: "2024-01-01",
+        },
+      });
+
+      mockFetchUserTocs.mockResolvedValue({
+        success: true,
+        data: { projects: [] },
+        message: "",
+      });
+
+      render(<ProjectsPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/premium plan/i)).toBeInTheDocument();
+        expect(screen.getByText(/0 \/ ∞ projects/i)).toBeInTheDocument();
+      });
+    });
+  });
+
   describe("Error Handling", () => {
     test("shows error banner when fetching projects fails", async () => {
       mockFetchUserTocs.mockRejectedValue({
@@ -466,8 +598,6 @@ describe("FormPanel Component", () => {
     fireEvent.click(screen.getByRole("button", { name: /←/i }));
     expect(screen.getByRole("button", { name: /→/i })).toBeInTheDocument();
   });
-
-  
 });
 
 describe("VisualPanel Component", () => {
@@ -528,10 +658,11 @@ describe("VisualPanel Component", () => {
       />
     );
 
-    const customizeBtn = screen.getByRole("button", { name: /customize/i });
+    // British spelling: "Customise"
+    const customizeBtn = screen.getByRole("button", { name: /customise/i });
     fireEvent.click(customizeBtn);
 
-    expect(screen.getByText(/hide customization/i)).toBeInTheDocument();
+    expect(screen.getByText(/hide customisation/i)).toBeInTheDocument();
   });
 
   test("prevents adding more than 10 cards", async () => {
@@ -549,29 +680,22 @@ describe("VisualPanel Component", () => {
       />
     );
 
-    // Click customize to show add buttons
-    const customizeBtn = screen.getByRole("button", { name: /customize/i });
+    // British spelling: "Customise"
+    const customizeBtn = screen.getByRole("button", { name: /customise/i });
     fireEvent.click(customizeBtn);
     
-    // Wait for customize mode to activate
     await waitFor(() => {
-      expect(screen.getByText(/hide customization/i)).toBeInTheDocument();
+      expect(screen.getByText(/hide customisation/i)).toBeInTheDocument();
     });
     
-    // Get all add buttons
     const addButtons = screen.getAllByRole("button", { name: /\+/i });
-    
-    // The Activities column should be the first column (index 0 after cloud buttons)
-    // Find the add button that's NOT in cloud-buttons
     const cardAddButtons = addButtons.filter(btn => {
       const parent = btn.closest('.add-remove-wrapper');
       return parent !== null;
     });
     
-    // Click the first card add button (Activities column)
     fireEvent.click(cardAddButtons[0]);
 
-    // Wait for warning toast
     const toastMessage = await screen.findByText(
       /maximum 10 cards per column/i,
       {},
@@ -580,7 +704,6 @@ describe("VisualPanel Component", () => {
     
     expect(toastMessage).toBeInTheDocument();
     
-    // Verify it's a warning toast
     const toastContainer = toastMessage.closest('.toast-notification');
     expect(toastContainer).toHaveClass('toast-warning');
   });

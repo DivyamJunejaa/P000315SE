@@ -14,6 +14,7 @@
   font-weight: 900;
   text-align: center;
   color: #ffffff;
+  margin-bottom: 1rem;
 
   /* darker purple glow using layered text-shadow */
   text-shadow:
@@ -23,23 +24,40 @@
     0 0 6px #bf7fff;   /* faint lilac for sparkle */
 }
 
-
-/* Gradient border / glow using pseudo-element */
-.projects-container h1::before {
-  content: attr(data-text);
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 0;
-
-  background: linear-gradient(90deg, #a076f9, #c77bff, #e0b7ff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-
-  /* Tight blur / glow close to the letters */
-  filter: blur(1px);
+/* Workspace Header */
+.workspace-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
+.plan-info {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.plan-badge {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  white-space: nowrap;
+}
+
+.project-count {
+  color: #666;
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
 
 /* Gradient button */
 .create-btn {
@@ -54,14 +72,20 @@
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.create-btn:hover {
+.create-btn:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(135, 75, 253, 0.3);
 }
 
-.create-btn:active {
+.create-btn:active:not(:disabled) {
   transform: translateY(0);
   box-shadow: 0 2px 6px rgba(135, 75, 253, 0.25);
+}
+
+.create-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: linear-gradient(90deg, #c0c0c0, #a0a0a0);
 }
 
 /* Form styling */
@@ -77,6 +101,19 @@
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 14px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+}
+
+.create-form input:focus {
+  outline: none;
+  border-color: #874bfd;
+  box-shadow: 0 0 0 3px rgba(135, 75, 253, 0.1);
+}
+
+.create-form input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background-color: #f5f5f5;
 }
 
 .form-actions {
@@ -90,12 +127,59 @@
   border-radius: 6px;
   border: none;
   cursor: pointer;
+  font-weight: 500;
+  transition: opacity 0.2s ease;
+}
+
+.form-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-actions button.creating {
+  background: linear-gradient(135deg, #b45ada, #7030f3);
+  cursor: wait;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Cancel button muted */
 .form-actions button:last-child {
   background: #f3f4f6;
   color: #374151;
+}
+
+.form-actions button:last-child:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+/* Validation Error */
+.validation-error {
+  color: #e74c3c;
+  font-size: 13px;
+  display: block;
+  margin-top: -4px;
+  text-align: left;
+  animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.input-error {
+  border-color: #e74c3c !important;
+  background-color: #ffeaea !important;
+}
+
+.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.2) !important;
 }
 
 /* Project list */
@@ -114,6 +198,19 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.project-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.project-card h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #1f2937;
+  text-align: left;
 }
 
 /* Open button styled to complement */
@@ -131,8 +228,6 @@
 .open-btn:hover {
   opacity: 0.9;
 }
-
-/* Add these styles to your existing Project.css file */
 
 /* Loading States */
 .loading-container {
@@ -218,33 +313,6 @@
   transform: scale(1.2);
 }
 
-/* Validation Error */
-.validation-error {
-  color: #e74c3c;
-  font-size: 13px;
-  display: block;
-  margin-top: 6px;
-  animation: fadeIn 0.2s ease-in;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.input-error {
-  border-color: #e74c3c !important;
-  background-color: #ffeaea !important;
-}
-
-.input-error:focus {
-  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.2) !important;
-}
-
 /* Empty State */
 .empty-state {
   text-align: center;
@@ -257,34 +325,157 @@
   margin: 0;
 }
 
-/* Form Actions */
-.form-actions button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-in;
 }
 
-.form-actions button.creating {
-  background: linear-gradient(135deg, #b45ada, #7030f3);
-  cursor: wait;
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease-out;
 }
 
-/* Create Form Input */
-.create-form input {
-  transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.create-form input:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  background-color: #f5f5f5;
+.modal-content h2 {
+  margin-top: 0;
+  color: #1f2937;
+  font-size: 1.5rem;
 }
 
-/* Project Card Hover Enhancement */
-.project-card {
+.modal-content p {
+  color: #666;
+  line-height: 1.6;
+}
+
+.upgrade-options {
+  display: flex;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.plan-option {
+  flex: 1;
+  padding: 1rem;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  text-align: center;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.project-card:hover {
+.plan-option:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.plan-option h3 {
+  margin: 0 0 0.5rem 0;
+  color: #1f2937;
+  font-size: 1.1rem;
+}
+
+.plan-option p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.plan-option.premium {
+  border-color: #FFD700;
+  background: linear-gradient(135deg, #FFF9E6, #FFF3CC);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.upgrade-btn {
+  padding: 0.75rem 2rem;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.upgrade-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.cancel-btn {
+  padding: 0.75rem 2rem;
+  background: #f5f5f5;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.cancel-btn:hover {
+  background: #e5e7eb;
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .projects-container h1 {
+    font-size: 2rem;
+  }
+
+  .workspace-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .plan-info {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .upgrade-options {
+    flex-direction: column;
+  }
+
+  .modal-content {
+    padding: 1.5rem;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .upgrade-btn,
+  .cancel-btn {
+    width: 100%;
+  }
 }

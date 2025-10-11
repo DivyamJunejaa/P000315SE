@@ -535,3 +535,58 @@ export const updateTerms = async (content: string) => {
     throw new Error(err.response?.data?.message || err.message || "Failed to update terms");
   }
 };
+
+/**
+ * Fetch user's subscription details
+ * @returns Subscription data including plan, status, and renewal info
+ */
+export const fetchSubscription = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/api/subscription/Get`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+    });
+
+    const { success, data, message } = response.data;
+
+    if (!success) {
+      // User might not have a subscription yet (free user)
+      if (response.data.statusCode === 404) {
+        return {
+          success: true,
+          data: null, // No subscription = free user
+          message: "No active subscription",
+        };
+      }
+      throw new Error(message || "Failed to fetch subscription");
+    }
+
+    return { success: true, data };
+  } catch (err: any) {
+    // Handle network errors or when backend is unreachable
+    if (isNetworkError(err)) {
+      return {
+        success: true,
+        data: null, // Treat as free user when offline
+        message: "No subscription data available (offline mode)",
+      };
+    }
+
+    // Handle 404 - user has no subscription
+    if (err.response?.status === 404) {
+      return {
+        success: true,
+        data: null,
+        message: "No active subscription",
+      };
+    }
+
+    throw new Error(
+      err.response?.data?.message || 
+      err.message || 
+      "Failed to fetch subscription"
+    );
+  }
+};

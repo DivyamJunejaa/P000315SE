@@ -19,8 +19,8 @@ export default function SubscriptionPlans() {
     // Build plans with Stripe price IDs for proper checkout session creation
     const list: Plan[] = [
       { id: "free", name: "Free", price: "Free", features: ["Basic access"] },
-      { id: "pro", name: "Pro", price: "$20", features: ["Form & Visual editor", "Export diagram"], stripe_price_id: "price_1SB17tQTtrbKnENdT7aClaEe" },
-      { id: "premium", name: "Premium", price: "$40", features: ["Everything in Pro", "Advanced customization"], stripe_price_id: "price_1S8tsnQTtrbKnENdYfv6azfr" },
+      { id: "pro", name: "Pro", price: "$20", features: ["Form & Visual editor", "Export diagram"], stripe_price_id: "price_1S8tsnQTtrbKnENdYfv6azfr" },
+      { id: "premium", name: "Premium", price: "$40", features: ["Everything in Pro", "Advanced customization"], stripe_price_id: "price_1SB17tQTtrbKnENdT7aClaEe" },
     ];
     setPlans(list);
   }, []);
