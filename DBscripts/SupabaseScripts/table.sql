@@ -89,6 +89,19 @@ create table if not exists "Subscription" (
   check (expires_at  is null or expires_at  >= start_date)
 );
 
+
+CREATE TABLE public."TermsAndCondition" (
+  id serial NOT NULL,
+  key text NOT NULL,
+  value text NOT NULL,
+  updated_at timestamp with time zone NULL DEFAULT now(),
+  CONSTRAINT TermsAndCondition_pkey PRIMARY KEY (id),
+  CONSTRAINT TermsAndCondition_key_key UNIQUE (key)
+) TABLESPACE pg_default;
+ 
+
+
+
 -- create table if not exists "Invoice" (
 --   invoice_id      serial primary key,
 --   subscription_id int not null references "Subscription"(subscription_id) on delete cascade,

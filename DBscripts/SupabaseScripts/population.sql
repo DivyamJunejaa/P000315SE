@@ -141,3 +141,12 @@ values
 (4, 'dave@example.com', 'DOCX', 'mobile.docx', 'failed'),
 (5, 'eva@example.com', 'PDF', 'finance.pdf', 'ready'),
 (6, 'frank@example.com', 'PNG', 'healthcare.png', 'ready');
+
+
+
+INSERT INTO public."TermsAndCondition" (key, value, updated_at)
+VALUES (
+  'terms_content',
+  'These are the Terms and Conditions for using our service. By accessing or using our service, you agree to be bound by these terms. Please read them carefully before proceeding.',
+  NOW()
+);
