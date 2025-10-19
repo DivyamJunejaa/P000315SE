@@ -96,37 +96,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Cancel all user's active or trialing subscriptions via lookup
--    const all = await stripe.subscriptions.list({ limit: 100, status: 'active' });
--    const byMeta = all.data.filter(s => s.metadata && s.metadata.user_id === String(user_id));
--    let subs = byMeta;
-+    const statusesToCheck: Stripe.SubscriptionListParams.Status[] = ['active', 'trialing', 'past_due', 'unpaid'];
-+    let subs: Stripe.Subscription[] = [];
-+    try {
-+      for (const st of statusesToCheck) {
-+        const bucket = await stripe.subscriptions.list({ limit: 100, status: st });
-+        const byMeta = bucket.data.filter(s => s.metadata && s.metadata.user_id === String(user_id));
-+        subs = subs.concat(byMeta);
-+      }
-+    } catch (e: any) {
-+      console.warn('Global subscription metadata scan failed:', e.message);
-+    }
+    const statusesToCheck: Stripe.SubscriptionListParams.Status[] = ['active', 'trialing', 'past_due', 'unpaid'];
+    let subs: Stripe.Subscription[] = [];
+    try {
+      for (const st of statusesToCheck) {
+        const bucket = await stripe.subscriptions.list({ limit: 100, status: st });
+        const byMeta = bucket.data.filter(s => s.metadata && s.metadata.user_id === String(user_id));
+        subs = subs.concat(byMeta);
+      }
+    } catch (e: any) {
+      console.warn('Global subscription metadata scan failed:', e.message);
+    }
 
     if (subs.length === 0) {
       try {
         const search = await stripe.customers.search({ query: `metadata['user_id']:'${String(user_id)}'` });
         const custId = search.data?.[0]?.id;
         if (custId) {
--          const custSubs = await stripe.subscriptions.list({ customer: custId, status: 'active', limit: 100 });
--          subs = custSubs.data;
--          // If no active subs, also check trialing subs
--          if (subs.length === 0) {
--            const trialing = await stripe.subscriptions.list({ customer: custId, status: 'trialing', limit: 100 });
--            subs = trialing.data;
--          }
-+          for (const st of statusesToCheck) {
-+            const bucket = await stripe.subscriptions.list({ customer: custId, status: st, limit: 100 });
-+            subs = subs.concat(bucket.data);
-+          }
+          for (const st of statusesToCheck) {
+            const bucket = await stripe.subscriptions.list({ customer: custId, status: st, limit: 100 });
+            subs = subs.concat(bucket.data);
+          }
         }
       } catch (e: any) {
         console.warn('Customer search/list failed:', e.message);
@@ -139,16 +129,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const byEmail = await stripe.customers.search({ query: `email:'${String(email)}'` });
         const custId = byEmail.data?.[0]?.id;
         if (custId) {
--          const custActive = await stripe.subscriptions.list({ customer: custId, status: 'active', limit: 100 });
--          subs = custActive.data;
--          if (subs.length === 0) {
--            const custTrial = await stripe.subscriptions.list({ customer: custId, status: 'trialing', limit: 100 });
--            subs = custTrial.data;
--          }
-+          for (const st of statusesToCheck) {
-+            const bucket = await stripe.subscriptions.list({ customer: custId, status: st, limit: 100 });
-+            subs = subs.concat(bucket.data);
-+          }
+          for (const st of statusesToCheck) {
+            const bucket = await stripe.subscriptions.list({ customer: custId, status: st, limit: 100 });
+            subs = subs.concat(bucket.data);
+          }
         }
       } catch (e: any) {
         console.warn('Customer search by email failed:', e.message);

@@ -166,6 +166,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch (dupErr: any) {
       console.warn('Duplicate subscription guard failed, proceeding with Checkout:', dupErr.message);
     }
+    // Ensure a Stripe customer exists before referencing it
+    if (!customer) {
+      try {
+        customer = await stripe.customers.create({
+          email: email || undefined,
+          metadata: { user_id: user_id.toString() }
+        });
+      } catch (custErr: any) {
+        console.warn('Customer creation failed:', custErr.message);
+      }
+    }
+    if (!customer) {
+      return res.status(500).json({ success: false, message: 'Unable to resolve Stripe customer' });
+    }
+
     // Also check trialing subscriptions
     try {
       const trialingSubs = await stripe.subscriptions.list({
