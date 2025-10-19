@@ -122,6 +122,11 @@ export default function Dashboard() {
   }
 
   const { overview, charts, recentSubscriptions } = data;
+  // Read Stripe Product IDs from env with fallback error messages
+  const PRO_PRODUCT_ID = import.meta.env.VITE_STRIPE_PRO_PRODUCT_ID;
+  const PREMIUM_PRODUCT_ID = import.meta.env.VITE_STRIPE_PREMIUM_PRODUCT_ID;
+  const proIdText = (typeof PRO_PRODUCT_ID === 'string' && PRO_PRODUCT_ID.trim()) ? PRO_PRODUCT_ID : 'No VITE_STRIPE_PRO_PRODUCT_ID Found';
+  const premiumIdText = (typeof PREMIUM_PRODUCT_ID === 'string' && PREMIUM_PRODUCT_ID.trim()) ? PREMIUM_PRODUCT_ID : 'No VITE_STRIPE_PREMIUM_PRODUCT_ID Found';
 
   return (
     <div style={S.section}>
@@ -245,6 +250,9 @@ export default function Dashboard() {
       {/* Subscriptions table + revenue chart */}
       <section style={S.gridTable}>
         <Card title="Subscriptions" subtitle="Recent signups & renewals">
+          <div style={{ marginBottom: 8, padding: 8, borderRadius: 8, background: '#fff7ed', color: '#92400e', fontSize: 12 }}>
+            Pro Product ID: {proIdText} · Premium Product ID: {premiumIdText}
+          </div>
           {recentSubscriptions.length === 0 ? (
             <div style={S.muted}>No subscriptions yet.</div>
           ) : (
@@ -254,8 +262,7 @@ export default function Dashboard() {
                 <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
                   <button
                     onClick={() => setShowAllSubs(prev => !prev)}
-                    style={{ border: "1px solid #ddd", borderRadius: 8, background: "white", padding: "6px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                  >
+                    style={{ border: "1px solid #ddd", borderRadius: 8, background: "white", padding: "6px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     {showAllSubs ? "Less" : "More"}
                   </button>
                 </div>
@@ -301,7 +308,8 @@ export default function Dashboard() {
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip />
-                  <Line type="monotone" dataKey="revenue" strokeWidth={2} />
+                  <Legend />
+                  <Line type="monotone" dataKey="revenue" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             )}

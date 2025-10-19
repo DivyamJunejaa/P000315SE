@@ -93,10 +93,10 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     log('stripe init OK')
 
     // Price/Product IDs provided by environment for Pro and Premium tiers
-    const PRO_PRICE_ID = process.env.STRIPE_PRO_PRICE_ID || 'price_1S8tsnQTtrbKnENdYfv6azfr'
-    const PREMIUM_PRICE_ID = process.env.STRIPE_PREMIUM_PRICE_ID || 'price_1SB17tQTtrbKnENdT7aClaEe'
-    const PRO_PRODUCT_ID = process.env.STRIPE_PRO_PRODUCT_ID || undefined
-    const PREMIUM_PRODUCT_ID = process.env.STRIPE_PREMIUM_PRODUCT_ID || undefined
+    const PRO_PRICE_ID = process.env.STRIPE_PRO_PRICE_ID || 'price_1SJOoqQTtrbKnENdq6xX75de'
+    const PREMIUM_PRICE_ID = process.env.STRIPE_PREMIUM_PRICE_ID || 'price_1SJP2sQTtrbKnENdbIpAzwMv'
+    const PRO_PRODUCT_ID = process.env.STRIPE_PRO_PRODUCT_ID || 'prod_TFueWDWqL8yRpe'
+    const PREMIUM_PRODUCT_ID = process.env.STRIPE_PREMIUM_PRODUCT_ID || 'prod_TFusJxyTfCSSiI'
     log('tier ids', { PRO_PRICE_ID, PREMIUM_PRICE_ID, PRO_PRODUCT_ID, PREMIUM_PRODUCT_ID })
 
     // Helper: get month start/end timestamps

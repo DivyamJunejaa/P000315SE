@@ -4,203 +4,175 @@ import { handleCORS } from '../utils/cors';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
 const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleCORS(req, res)) return;
-
-
-
   if (req.method !== 'POST') {
-    return res.status(405).json({
-      success: false,
-      message: 'Method not allowed'
-    });
+    return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
 
   try {
-    const { user_id, subscription_id } = req.body;
+    const { user_id, subscription_id, email } = req.body;
 
     if (!stripeSecret || !stripe) {
-      return res.status(500).json({
-        success: false,
-        message: 'Payment server is not configured. Missing STRIPE_SECRET_KEY.',
-      });
+      return res.status(500).json({ success: false, message: 'Payment server is not configured. Missing STRIPE_SECRET_KEY.' });
     }
-
     if (!user_id) {
-      return res.status(400).json({
-        success: false,
-        message: 'User ID is required'
-      });
+      return res.status(400).json({ success: false, message: 'User ID is required' });
     }
 
-    // If subscription_id is provided, cancel that specific subscription
-    if (subscription_id) {
+    const updateCustomerMeta = async (customerId: string, canceledAt: number | null) => {
       try {
-        let actualSubscriptionId = subscription_id;
-        
-        // Check if the provided ID is a Checkout Session ID (starts with 'cs_')
-        if (subscription_id.startsWith('cs_')) {
-          console.log('Checkout Session ID detected, retrieving subscription...');
-          
-          // Retrieve the checkout session to get the subscription ID
-          const checkoutSession = await stripe.checkout.sessions.retrieve(subscription_id);
-          
-          if (!checkoutSession.subscription) {
-            return res.status(400).json({
-              success: false,
-              message: 'No subscription found for this checkout session'
+        const cust = await stripe.customers.retrieve(customerId);
+        const prev = (cust as any)?.metadata ?? {};
+        await stripe.customers.update(customerId, {
+          metadata: {
+            ...prev,
+            canceled_by_user: 'true',
+            canceled_at: String(canceledAt ?? Math.floor(Date.now() / 1000))
+          }
+        });
+      } catch (e: any) {
+        console.warn('Failed to tag customer as canceled:', e.message);
+      }
+    };
+
+    // If a specific identifier was provided, try to cancel by it first, but gracefully fallback
+    if (subscription_id) {
+      let subId = String(subscription_id);
+
+      // Map Checkout Session -> Subscription, with fallback for invalid preview IDs
+      if (subId.startsWith('cs_')) {
+        try {
+          const sess = await stripe.checkout.sessions.retrieve(subId);
+          if (sess.subscription) {
+            subId = sess.subscription as string;
+          } else {
+            console.warn('Checkout session has no subscription; falling back to lookup', { session_id: subId });
+            subId = '';
+          }
+        } catch (e: any) {
+          console.warn('Checkout session lookup failed; falling back to lookup', e.message);
+          subId = '';
+        }
+      }
+
+      if (subId && subId.startsWith('sub_')) {
+        try {
+          const current = await stripe.subscriptions.retrieve(subId);
+          if (current.status === 'canceled') {
+            return res.status(200).json({
+              success: true,
+              message: 'Subscription was already canceled',
+              data: {
+                subscription_id: current.id,
+                status: current.status,
+                canceled_at: current.canceled_at,
+                checkout_session_id: subscription_id.startsWith('cs_') ? String(subscription_id) : null,
+                already_canceled: true
+              }
             });
           }
-          
-          actualSubscriptionId = checkoutSession.subscription as string;
-          console.log('Found subscription ID:', actualSubscriptionId);
-        }
-        
-        // First, check the current status of the subscription
-        const currentSubscription = await stripe.subscriptions.retrieve(actualSubscriptionId);
-        
-        // If already canceled, return appropriate message
-        if (currentSubscription.status === 'canceled') {
+
+          const canceled = await stripe.subscriptions.cancel(subId);
+          await updateCustomerMeta(canceled.customer as string, canceled.canceled_at);
           return res.status(200).json({
             success: true,
-            message: 'Subscription was already canceled',
+            message: 'Subscription canceled successfully',
             data: {
-              subscription_id: currentSubscription.id,
-              status: currentSubscription.status,
-              canceled_at: currentSubscription.canceled_at,
-              checkout_session_id: subscription_id.startsWith('cs_') ? subscription_id : null,
-              already_canceled: true
+              subscription_id: canceled.id,
+              status: canceled.status,
+              canceled_at: canceled.canceled_at,
+              cancel_at_period_end: false,
+              checkout_session_id: subscription_id.startsWith('cs_') ? String(subscription_id) : null,
+              already_canceled: false
             }
           });
+        } catch (e: any) {
+          console.warn('Cancel by subscription_id failed; will fallback to metadata/email search', e.message);
+          // Continue to generic lookup below
         }
-        
-        // Cancel behavior: immediate only — remove scheduling
-        const subscription = await stripe.subscriptions.cancel(actualSubscriptionId);
-
-        // Tag customer metadata to indicate canceled by user
-        try {
-          const custId = subscription.customer as string;
-          if (custId) {
-            const cust = await stripe.customers.retrieve(custId);
-            const meta = (cust && cust.metadata) || {};
-            await stripe.customers.update(custId, { 
-              metadata: { 
-                ...meta, 
-                canceled_by_user: 'true', 
-                canceled_at: String(subscription.canceled_at || Math.floor(Date.now()/1000)) 
-              } 
-            });
-          }
-        } catch (metaErr: any) {
-          console.warn('Failed to tag customer as canceled:', metaErr.message);
-        }
-        
-        return res.status(200).json({
-          success: true,
-          message: 'Subscription canceled successfully',
-          data: {
-            subscription_id: subscription.id,
-            status: subscription.status,
-            canceled_at: subscription.canceled_at,
-            cancel_at_period_end: false,
-            checkout_session_id: subscription_id.startsWith('cs_') ? subscription_id : null,
-            already_canceled: false
-          }
-        });
-      } catch (stripeError: any) {
-        console.error('Stripe cancellation error:', stripeError);
-        return res.status(400).json({
-          success: false,
-          message: `Failed to cancel subscription: ${stripeError.message}`
-        });
       }
     }
 
-    // If no subscription_id provided, find and cancel all active subscriptions for the user
-    try {
-      // Search for subscriptions by customer metadata or email
-      // Note: You'll need to store customer ID mapping in your database
-      // For now, we'll search by metadata
-      const subscriptions = await stripe.subscriptions.list({
-        limit: 100,
-        status: 'active'
-      });
+    // Cancel all user's active or trialing subscriptions via lookup
+-    const all = await stripe.subscriptions.list({ limit: 100, status: 'active' });
+-    const byMeta = all.data.filter(s => s.metadata && s.metadata.user_id === String(user_id));
+-    let subs = byMeta;
++    const statusesToCheck: Stripe.SubscriptionListParams.Status[] = ['active', 'trialing', 'past_due', 'unpaid'];
++    let subs: Stripe.Subscription[] = [];
++    try {
++      for (const st of statusesToCheck) {
++        const bucket = await stripe.subscriptions.list({ limit: 100, status: st });
++        const byMeta = bucket.data.filter(s => s.metadata && s.metadata.user_id === String(user_id));
++        subs = subs.concat(byMeta);
++      }
++    } catch (e: any) {
++      console.warn('Global subscription metadata scan failed:', e.message);
++    }
 
-      // Filter subscriptions that belong to this user
-      // This assumes you store user_id in subscription metadata
-      const userSubscriptions = subscriptions.data.filter(sub => 
-        sub.metadata && sub.metadata.user_id === user_id.toString()
-      );
-
-      if (userSubscriptions.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'No active subscriptions found for this user'
-        });
-      }
-
-      // Cancel all user subscriptions immediately
-      const canceledSubscriptions: Array<{
-        subscription_id: string;
-        status: string;
-        canceled_at: number | null;
-        cancel_at_period_end: boolean;
-      }> = [];
-
-      for (const subscription of userSubscriptions) {
-        try {
-          const canceled = await stripe.subscriptions.cancel(subscription.id);
-
-          // Tag customer metadata
-          try {
-            const custId = canceled.customer as string;
-            if (custId) {
-              const cust = await stripe.customers.retrieve(custId);
-              const meta = (cust && cust.metadata) || {};
-              await stripe.customers.update(custId, { 
-                metadata: { 
-                  ...meta, 
-                  canceled_by_user: 'true', 
-                  canceled_at: String(canceled.canceled_at || Math.floor(Date.now()/1000)) 
-                } 
-              });
-            }
-          } catch (metaErr: any) {
-            console.warn('Failed to tag customer as canceled:', metaErr.message);
-          }
-
-          canceledSubscriptions.push({
-            subscription_id: canceled.id,
-            status: canceled.status,
-            canceled_at: canceled.canceled_at ?? null,
-            cancel_at_period_end: false
-          });
-        } catch (cancelError) {
-          console.error(`Failed to cancel subscription ${subscription.id}:`, cancelError);
+    if (subs.length === 0) {
+      try {
+        const search = await stripe.customers.search({ query: `metadata['user_id']:'${String(user_id)}'` });
+        const custId = search.data?.[0]?.id;
+        if (custId) {
+-          const custSubs = await stripe.subscriptions.list({ customer: custId, status: 'active', limit: 100 });
+-          subs = custSubs.data;
+-          // If no active subs, also check trialing subs
+-          if (subs.length === 0) {
+-            const trialing = await stripe.subscriptions.list({ customer: custId, status: 'trialing', limit: 100 });
+-            subs = trialing.data;
+-          }
++          for (const st of statusesToCheck) {
++            const bucket = await stripe.subscriptions.list({ customer: custId, status: st, limit: 100 });
++            subs = subs.concat(bucket.data);
++          }
         }
+      } catch (e: any) {
+        console.warn('Customer search/list failed:', e.message);
       }
-
-      return res.status(200).json({
-        success: true,
-        message: `Successfully canceled ${canceledSubscriptions.length} subscription(s)`,
-        data: {
-          canceled_subscriptions: canceledSubscriptions
-        }
-      });
-
-    } catch (stripeError: any) {
-      console.error('Stripe search error:', stripeError);
-      return res.status(500).json({
-        success: false,
-        message: `Failed to search for subscriptions: ${stripeError.message}`
-      });
     }
 
+    // Fallback: search by email for Payment Links or customers without metadata
+    if (subs.length === 0 && email) {
+      try {
+        const byEmail = await stripe.customers.search({ query: `email:'${String(email)}'` });
+        const custId = byEmail.data?.[0]?.id;
+        if (custId) {
+-          const custActive = await stripe.subscriptions.list({ customer: custId, status: 'active', limit: 100 });
+-          subs = custActive.data;
+-          if (subs.length === 0) {
+-            const custTrial = await stripe.subscriptions.list({ customer: custId, status: 'trialing', limit: 100 });
+-            subs = custTrial.data;
+-          }
++          for (const st of statusesToCheck) {
++            const bucket = await stripe.subscriptions.list({ customer: custId, status: st, limit: 100 });
++            subs = subs.concat(bucket.data);
++          }
+        }
+      } catch (e: any) {
+        console.warn('Customer search by email failed:', e.message);
+      }
+    }
+
+    if (subs.length === 0) {
+      return res.status(404).json({ success: false, message: 'No active subscriptions found for this user' });
+    }
+
+    const canceledSubs: Array<{ subscription_id: string; status: string; canceled_at: number | null; cancel_at_period_end: boolean; }> = [];
+    for (const sub of subs) {
+      try {
+        const canceled = await stripe.subscriptions.cancel(sub.id);
+        await updateCustomerMeta(canceled.customer as string, canceled.canceled_at);
+        canceledSubs.push({ subscription_id: canceled.id, status: canceled.status, canceled_at: canceled.canceled_at ?? null, cancel_at_period_end: false });
+      } catch (e: any) {
+        console.error(`Failed to cancel subscription ${sub.id}:`, e);
+      }
+    }
+
+    return res.status(200).json({ success: true, message: `Successfully canceled ${canceledSubs.length} subscription(s)`, data: { canceled_subscriptions: canceledSubs } });
   } catch (error: any) {
     console.error('Cancel subscription error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 }

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Authentication Middleware
  * 
  * Provides JWT-based authentication for Vercel serverless functions.
@@ -29,6 +29,7 @@
 
 import * as jwt from 'jsonwebtoken';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { CorsUtils } from '../utils/CorsUtils';
 
 
 
@@ -215,12 +216,17 @@ function verifyJwtToken(token: string): User {
 export const validateToken = (handler: AuthenticatedHandler): Handler => {
     return async (req: VercelRequest, res: VercelResponse) => {
         try {
-            // STEP 1: Handle CORS preflight requests
-            // OPTIONS requests must pass through without authentication
-            // to allow browsers to perform CORS checks before actual requests
+            // Always set CORS headers so browsers can read any response
+            CorsUtils.setCors(res, req);
+            // Handle CORS preflight immediately
+            if (CorsUtils.handleOptions(req, res)) {
+                return;
+            }
+
+            // Maintain compatibility with existing preflight detection
             if (isCorsPreflightRequest(req.method)) {
-                console.log('CORS preflight request detected, bypassing authentication');
-                return handler(req as AuthenticatedRequest, res);
+                console.log('CORS preflight request detected, responding with CORS headers');
+                return; // Already handled above
             }
 
             // STEP 2: Extract Bearer token from Authorization header
@@ -233,16 +239,11 @@ export const validateToken = (handler: AuthenticatedHandler): Handler => {
             }
 
             // STEP 4: Verify and decode JWT token
-            // This validates:
-            // - Token signature matches JWT_SECRET
-            // - Token has not expired (exp claim)
-            // - Token structure is valid
             const decoded = verifyJwtToken(token);
 
             console.log(`Authentication successful for user: ${decoded.email}`);
 
             // STEP 5: Augment request with decoded user data
-            // This makes user data available to the handler via req.user
             (req as AuthenticatedRequest).user = decoded;
 
             // STEP 6: Call the original handler with authenticated request
@@ -252,7 +253,6 @@ export const validateToken = (handler: AuthenticatedHandler): Handler => {
             // JWT verification failures (invalid signature, expired token, etc.)
             console.error('Authentication error:', error);
 
-            // Log specific error details for debugging (consider security implications)
             if (error instanceof jwt.JsonWebTokenError) {
                 console.error('JWT Error:', error.message);
             } else if (error instanceof jwt.TokenExpiredError) {

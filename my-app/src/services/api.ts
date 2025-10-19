@@ -374,11 +374,11 @@ export const createCheckoutSession = async (data: {
       { headers: { "Content-Type": "application/json" } }
     );
     console.debug('API:createCheckoutSession ← response', { status: response.status, data: response.data });
-    const { success, url, message } = response.data || {};
+    const { success, url, session_id, effective_success_url, effective_cancel_url, message } = response.data || {};
     if (!success || !url) {
       throw new Error(message || "Failed to create checkout session");
     }
-    return { success, url } as { success: boolean; url: string };
+    return { success, url, session_id, effective_success_url, effective_cancel_url } as { success: boolean; url: string; session_id?: string; effective_success_url?: string; effective_cancel_url?: string; };
   } catch (err: any) {
     // Fallback: when running locally, always try local stripe backend if primary fails
     console.error('API:createCheckoutSession ✖ error', {
@@ -425,6 +425,7 @@ export const cancelSubscription = async (data: {
   user_id: string | number;
   subscription_id?: string;
   cancel_at_period_end?: boolean;
+  email?: string; // optional fallback for customer lookup
 }) => {
   try {
     const response = await axios.post(
@@ -433,6 +434,7 @@ export const cancelSubscription = async (data: {
         user_id: data.user_id,
         subscription_id: data.subscription_id,
         cancel_at_period_end: data.cancel_at_period_end,
+        email: data.email,
       },
       { headers: { "Content-Type": "application/json" } }
     );
@@ -443,29 +445,7 @@ export const cancelSubscription = async (data: {
     }
     return { success, message };
   } catch (err: any) {
-    // If local dev points to an unavailable port (e.g., 3003), retry on 3001
     const msg = err.response?.data?.message || err.message || "Failed to cancel subscription";
-    /*const isLocal = PAYMENT_API_BASE.startsWith("http://localhost");
-    const needsPortRetry = isNetworkError(err) && isLocal && /:3003\b/.test(PAYMENT_API_BASE);
-    if (needsPortRetry) {
-      try {
-        const altBase = PAYMENT_API_BASE.replace(':3003', ':3001');
-        const retry = await axios.post(
-          `${altBase}/api/payment/cancel-subscription`,
-          {
-            user_id: data.user_id,
-            subscription_id: data.subscription_id,
-            cancel_at_period_end: data.cancel_at_period_end,
-          },
-          { headers: { "Content-Type": "application/json" } }
-        );
-        const { success, message } = retry.data || {};
-        if (!success) throw new Error(message || "Failed to cancel subscription");
-        return { success, message };
-      } catch (retryErr: any) {
-        throw new Error(retryErr.response?.data?.message || retryErr.message || msg);
-      }
-    }*/
     throw new Error(msg);
   }
 };
@@ -880,6 +860,57 @@ export const fetchSubscription = async () => {
         success: true,
         data: null, // Treat as free user when offline
         message: 'No subscription data available (offline mode)',
+      };
+    }
+
+    // NEW: Handle 401 Unauthorized by falling back to localStorage
+    if (err.response?.status === 401) {
+      try {
+        const unifiedRaw = localStorage.getItem('subscriptionData');
+        if (unifiedRaw) {
+          const unified = JSON.parse(unifiedRaw);
+          if (unified && unified.status === 'active') {
+            return { success: true, data: unified, message: 'Loaded subscription from local storage (unauthorized)' };
+          }
+        }
+      } catch {}
+      try {
+        const localRaw = localStorage.getItem('userSubscription');
+        if (localRaw) {
+          const localSub = JSON.parse(localRaw);
+          if (localSub && localSub.status === 'active') {
+            const planName = String(localSub.plan || '').toLowerCase();
+            const envPro = process.env.REACT_APP_STRIPE_PRICE_PRO || '';
+            const envPremium = process.env.REACT_APP_STRIPE_PRICE_PREMIUM || '';
+            let planId = '';
+            if (planName.includes('premium')) planId = envPremium || 'premium';
+            else if (planName.includes('pro')) planId = envPro || 'pro';
+            else planId = 'free';
+            const userRaw = localStorage.getItem('user');
+            const email = userRaw ? (JSON.parse(userRaw)?.email || '') : '';
+            const nowISO = new Date().toISOString();
+            return {
+              success: true,
+              data: {
+                subscriptionId: localSub.subscriptionId || `local-${Date.now()}`,
+                email,
+                planId,
+                status: 'active',
+                startDate: localSub.activatedAt || nowISO,
+                renewalDate: localSub.expiry ? new Date(localSub.expiry).toISOString() : nowISO,
+                expiresAt: localSub.expiry ? new Date(localSub.expiry).toISOString() : null,
+                autoRenew: true,
+                updatedAt: nowISO,
+              },
+              message: 'Loaded subscription from local storage (unauthorized)',
+            };
+          }
+        }
+      } catch {}
+      return {
+        success: true,
+        data: null,
+        message: 'Unauthorized: using local subscription (if any)',
       };
     }
 

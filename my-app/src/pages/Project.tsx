@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { createTocProject, fetchUserTocs, fetchSubscription } from "../services/api";
 import "../style/Project.css";
+import { useAuth } from "../auth/AuthProvider";
 // Local plan helpers (removed shared planMapping)
 const detectTierFromPlanId = (planId?: string | null): 'free' | 'pro' | 'premium' => {
   const id = String(planId || '').toLowerCase();
@@ -45,6 +46,7 @@ const ProjectsPage: React.FC = () => {
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const userId = localStorage.getItem("userId") || "";
 
@@ -146,7 +148,7 @@ const ProjectsPage: React.FC = () => {
     };
 
     loadData();
-  }, []);
+  }, [user]);
 
   // Check if user can create more projects
   const canCreateProject = (): boolean => {

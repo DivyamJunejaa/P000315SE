@@ -10,7 +10,7 @@ const RichTextEditor = ({
   height = 400,
   preview = "edit"
 }) => {
-  const [mode, setMode] = useState(preview);
+  const [mode] = useState(preview);
 
   const editorStyle = {
     backgroundColor: 'transparent',

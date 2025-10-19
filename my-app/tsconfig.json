@@ -19,12 +19,15 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["jest", "node"] 
+    "types": ["jest", "node"]
   },
   "include": [
-    "src",
-    "__tests__",
+    "src"
+  ],
+  "exclude": [
     "**/*.test.ts",
-    "**/*.test.tsx"
+    "**/*.test.tsx",
+    "src/test/**",
+    "__tests__/**"
   ]
 }

@@ -48,20 +48,20 @@ import { handleCORS } from '../utils/cors';
     }
 
     // Retrieve subscription details
-    const subscription = await stripe.subscriptions.retrieve(subId);
+    const subscription = (await stripe.subscriptions.retrieve(subId)) as Stripe.Subscription;
 
     // Retrieve customer details; prefer email from Stripe customer to lock identity
     const customerId = (checkoutSession && checkoutSession.customer) || subscription.customer;
     const customer = customerId ? await stripe.customers.retrieve(customerId as string) : null;
-    const customerEmail = (customer && !customer.deleted && customer.email) || email || '';
+    const customerEmail = (customer && (customer as any).email) || email || '';
 
     // Attach user metadata for future duplicate protection
     const desiredUserId = user_id ? String(user_id) : undefined;
     try {
-      const currentMetaUserId = subscription.metadata && subscription.metadata.user_id;
+      const currentMetaUserId = subscription.metadata && (subscription.metadata as any).user_id;
       if (desiredUserId && currentMetaUserId !== desiredUserId) {
         await stripe.subscriptions.update(subscription.id, {
-          metadata: { ...(subscription.metadata || {}), user_id: desiredUserId }
+          metadata: { ...(subscription.metadata || {} as any), user_id: desiredUserId }
         });
       }
     } catch (metaErr: any) {
@@ -76,8 +76,8 @@ import { handleCORS } from '../utils/cors';
     const startDate = subscription.start_date 
       ? new Date(subscription.start_date * 1000).toISOString() 
       : new Date().toISOString();
-    const currentPeriodEnd = subscription.current_period_end 
-      ? new Date(subscription.current_period_end * 1000).toISOString() 
+    const currentPeriodEnd = (subscription as any).current_period_end 
+      ? new Date((subscription as any).current_period_end * 1000).toISOString() 
       : startDate;
 
     return res.status(200).json({

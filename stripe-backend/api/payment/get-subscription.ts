@@ -44,7 +44,7 @@ import { handleCORS } from '../utils/cors';
       subId = session.subscription as string;
     }
 
-    const subscription = await stripe.subscriptions.retrieve(subId);
+    const subscription = (await stripe.subscriptions.retrieve(subId)) as Stripe.Subscription;
 
     // Extract minimal fields useful to the frontend
     const item = subscription.items?.data?.[0];
@@ -57,8 +57,8 @@ import { handleCORS } from '../utils/cors';
       data: {
         subscriptionId: subscription.id,
         status: subscription.status,
-        current_period_end: subscription.current_period_end,
-        current_period_start: subscription.current_period_start,
+        current_period_end: (subscription as any).current_period_end,
+        current_period_start: (subscription as any).current_period_start,
         planId,
         interval,
         amount,

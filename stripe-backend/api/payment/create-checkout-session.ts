@@ -1,4 +1,4 @@
-﻿import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import crypto from 'crypto';
 import { handleCORS } from '../utils/cors';
@@ -86,6 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Resolve or create a Stripe Customer for this user to lock email editing on Checkout
     // Priority: search by metadata user_id, then by email, with robust fallbacks; finally create if missing
     let customer: Stripe.Customer | null = null;
+    let emailMatchedCustomers: Stripe.Customer[] = [];
     try {
       // Try search by metadata user_id
       const byMeta = await stripe.customers.search({
@@ -104,60 +105,77 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const byEmail = await stripe.customers.search({
           query: `email:'${email}'`
         });
-        if (byEmail && byEmail.data && byEmail.data.length > 0) {
-          customer = byEmail.data[0];
+        if (byEmail && Array.isArray(byEmail.data) && byEmail.data.length > 0) {
+          emailMatchedCustomers = byEmail.data as Stripe.Customer[];
+          customer = emailMatchedCustomers[0];
         }
         // Fallback: list and filter by email if search returns no results or not supported
         if (!customer) {
           try {
             const list = await stripe.customers.list({ limit: 100 });
-            const match = list.data.find(c => (c.email || '').toLowerCase() === (email || '').toLowerCase());
-            if (match) customer = match;
+            emailMatchedCustomers = list.data.filter(c => (c.email || '').toLowerCase() === (email || '').toLowerCase()) as Stripe.Customer[];
+            if (emailMatchedCustomers.length > 0) customer = emailMatchedCustomers[0];
           } catch (listErr: any) {
             console.warn('Customer list fallback failed:', listErr.message);
           }
         }
       } catch (e: any) {
-        console.warn('Customer search by email failed, will create new customer if needed:', e.message);
+        console.warn('Customer search by email failed:', e.message);
       }
     }
 
-    if (!customer) {
-      // Create a new customer with provided email if available
-      customer = await stripe.customers.create({
-        email: email || undefined,
-        metadata: { user_id: user_id.toString() }
-      });
-    } else {
-      // Ensure Stripe Customer email matches logged-in email to lock Checkout email field
-      try {
-        const cust = await stripe.customers.retrieve(customer.id);
-        const currentEmail = (cust && !cust.deleted && cust.email) || undefined;
-        if (email && (!currentEmail || currentEmail.toLowerCase() !== email.toLowerCase())) {
-          await stripe.customers.update(customer.id, { email });
-          customer.email = email; // reflect update locally
-        }
-        // Also ensure user_id metadata is present
-        const meta = (cust && !cust.deleted && cust.metadata) || {};
-        if (String(meta.user_id || '') !== user_id.toString()) {
-          await stripe.customers.update(customer.id, { metadata: { ...meta, user_id: user_id.toString() } });
-        }
-      } catch (custUpdateErr: any) {
-        console.warn('Failed to align customer email/metadata:', custUpdateErr.message);
-      }
-    }
-
-    // If customer already has an active subscription, avoid duplicate subscriptions
+    // Before creating Checkout, prevent duplicate subscriptions for same email across all matching customers
     try {
-      const existingSubs = await stripe.subscriptions.list({
+      const candidates: Stripe.Customer[] = [];
+      if (customer) candidates.push(customer);
+      for (const c of emailMatchedCustomers) {
+        if (!c || !c.id) continue;
+        if (!candidates.find(x => x.id === c.id)) candidates.push(c);
+      }
+
+      let foundPaidSub = false;
+      let foundSubCustomerId: string | null = null;
+      for (const c of candidates) {
+        try {
+          const active = await stripe.subscriptions.list({ customer: c.id, status: 'active', limit: 100 });
+          const trialing = await stripe.subscriptions.list({ customer: c.id, status: 'trialing', limit: 100 });
+          const subs = [...active.data, ...trialing.data];
+          // If any non-free subscription exists, block duplicate checkout
+          if (subs.length > 0) {
+            foundPaidSub = true;
+            foundSubCustomerId = c.id;
+            break;
+          }
+        } catch (subErr: any) {
+          console.warn('Subscription list failed for customer', c.id, subErr.message);
+        }
+      }
+
+      if (foundPaidSub && foundSubCustomerId) {
+        const returnUrl = success_url || `${frontendOrigin}/project`;
+        const portal = await stripe.billingPortal.sessions.create({
+          customer: foundSubCustomerId,
+          return_url: returnUrl,
+        });
+        return res.status(200).json({
+          success: true,
+          url: portal.url,
+          message: 'Existing subscription detected; redirecting to Billing Portal',
+        });
+      }
+    } catch (dupErr: any) {
+      console.warn('Duplicate subscription guard failed, proceeding with Checkout:', dupErr.message);
+    }
+    // Also check trialing subscriptions
+    try {
+      const trialingSubs = await stripe.subscriptions.list({
         customer: customer.id,
-        status: 'active',
+        status: 'trialing',
         limit: 1,
       });
-      if (existingSubs && existingSubs.data && existingSubs.data.length > 0) {
-        // If the existing subscription is a free-tier (unit_amount == 0 or matches STRIPE_FREE_PRICE_ID),
-        // do NOT redirect to Billing Portal; proceed with Checkout to upgrade.
-        const sub = existingSubs.data[0];
+      if (trialingSubs && trialingSubs.data && trialingSubs.data.length > 0) {
+        // Only redirect to portal for trialing subscriptions if they are paid tiers.
+        const sub = trialingSubs.data[0];
         const FREE_PRICE_ID = process.env.STRIPE_FREE_PRICE_ID || null;
         const isFreeTier = Array.isArray(sub.items?.data) && sub.items.data.some((item) => {
           const price = item?.price;
@@ -166,9 +184,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const matchesFreeId = FREE_PRICE_ID ? price.id === FREE_PRICE_ID : false;
           return isZeroAmount || matchesFreeId;
         });
-
         if (!isFreeTier) {
-          // Create a Billing Portal session for plan changes / cancellation
           const returnUrl = success_url || `${frontendOrigin}/project`;
           const portal = await stripe.billingPortal.sessions.create({
             customer: customer.id,
@@ -177,50 +193,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(200).json({
             success: true,
             url: portal.url,
-            message: 'Existing paid subscription detected; redirecting to Billing Portal',
+            message: 'Trialing paid subscription detected; redirecting to Billing Portal',
           });
         }
-        // Free-tier subscription detected — continue to Checkout creation below.
+        // Free-tier trial — continue with Checkout creation.
       }
-      // Also check trialing subscriptions
-      try {
-        const trialingSubs = await stripe.subscriptions.list({
-          customer: customer.id,
-          status: 'trialing',
-          limit: 1,
-        });
-        if (trialingSubs && trialingSubs.data && trialingSubs.data.length > 0) {
-          // Only redirect to portal for trialing subscriptions if they are paid tiers.
-          const sub = trialingSubs.data[0];
-          const FREE_PRICE_ID = process.env.STRIPE_FREE_PRICE_ID || null;
-          const isFreeTier = Array.isArray(sub.items?.data) && sub.items.data.some((item) => {
-            const price = item?.price;
-            if (!price) return false;
-            const isZeroAmount = typeof price.unit_amount === 'number' && price.unit_amount === 0;
-            const matchesFreeId = FREE_PRICE_ID ? price.id === FREE_PRICE_ID : false;
-            return isZeroAmount || matchesFreeId;
-          });
-          if (!isFreeTier) {
-            const returnUrl = success_url || `${frontendOrigin}/project`;
-            const portal = await stripe.billingPortal.sessions.create({
-              customer: customer.id,
-              return_url: returnUrl,
-            });
-            return res.status(200).json({
-              success: true,
-              url: portal.url,
-              message: 'Trialing paid subscription detected; redirecting to Billing Portal',
-            });
-          }
-          // Free-tier trial — continue with Checkout creation.
-        }
-      } catch (trialErr: any) {
-        console.warn('Trialing subscription check failed, proceeding with Checkout:', trialErr.message);
-      }
-    } catch (portalErr: any) {
-      console.warn('Subscription check/portal session failed, proceeding with Checkout:', portalErr.message);
+    } catch (trialErr: any) {
+      console.warn('Trialing subscription check failed, proceeding with Checkout:', trialErr.message);
     }
-
     // Compute effective redirect URLs, ensuring they target the frontend
     const effectiveSuccessUrl = normalizeUrlToFrontend(
       success_url || `${frontendOrigin}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,

@@ -181,53 +181,8 @@ export default function TermsManagement() {
     }
   };
 
-  const handleSave = async () => {
-    if (!hasChanges) {
-      setMessage({
-        type: "error",
-        text: "No changes to save."
-      });
-      return;
-    }
-
-    try {
-      setSaving(true);
-      setMessage(null);
-      
-      // Validate before saving
-      const validationResult = validateTermsContent(content);
-      if (!validationResult.isValid) {
-        setMessage({
-          type: "error",
-          text: `Cannot save: ${validationResult.errors.join(", ")}`
-        });
-        return;
-      }
-
-      const updatedTerms = await updateTerms(content);
-      setOriginalContent(updatedTerms.content);
-      setLastUpdated(updatedTerms.updatedAt);
-      setHasChanges(false);
-      setMessage({
-        type: "success",
-        text: "Terms and conditions updated successfully!"
-      });
-      setValidation(null);
-
-      // Clear success message after 3 seconds
-      setTimeout(() => {
-        setMessage(null);
-      }, 3000);
-    } catch (error) {
-      console.error("Error saving terms:", error);
-      setMessage({
-        type: "error",
-        text: "Error saving terms and conditions"
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
+  // Removed unused handleSave to satisfy ESLint (dup of saveTerms)
+  // const handleSave = async () => {} 
 
   const resetChanges = () => {
     setContent(originalContent);

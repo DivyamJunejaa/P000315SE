@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import ConfirmModal from "../components/ConfirmModal";
 import Toast from "../components/Toast";
 import { useNavigate } from "react-router-dom";
-import { fetchUserProfile, updateUserProfile, cancelSubscription, updateSubscription, fetchSubscription } from "../services/api"; // Update the import path as needed
+import { fetchUserProfile, updateUserProfile, cancelSubscription, updateSubscription, fetchSubscription, syncStripeSubscription } from "../services/api"; // Update the import path as needed
 import "../style/profile.css";
 // Local plan helpers (removed shared planMapping)
 const detectTierFromPlanId = (planId?: string | null): 'free' | 'pro' | 'premium' => {
@@ -194,28 +194,60 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ subscription }) => {
         return;
       }
 
-      const subscriptionId = (() => {
+      const userEmail = userProfile?.email || "";
+
+      // Resolve a canonical subscriptionId/sessionId from Stripe before canceling
+      let subscriptionId = (() => {
         const subId = userSubscription?.subscriptionId;
         if (subId && (subId.startsWith('sub_') || subId.startsWith('cs_'))) return subId;
         const csId = (userSubscription as any)?.sessionId;
-        if (csId && typeof csId === 'string' && csId.startsWith('cs_')) return csId;
+        if (csId && typeof csId === 'string' && csId.startsWith('cs_') && csId !== 'cs_test_preview') return csId;
         return undefined;
       })();
+
+      if (!subscriptionId) {
+        try {
+          const sync = await syncStripeSubscription({
+            user_id: userId,
+            email: userEmail,
+          });
+          if (sync?.success && sync?.data?.subscriptionId) {
+            subscriptionId = sync.data.subscriptionId;
+            // Cache authoritative subscription data for later
+            try {
+              const payload = {
+                subscriptionId: sync.data.subscriptionId,
+                email: sync.data.email,
+                planId: sync.data.planId,
+                status: sync.data.status,
+                startDate: sync.data.startDate,
+                renewalDate: sync.data.renewalDate,
+                expiresAt: sync.data.expiresAt,
+                autoRenew: sync.data.autoRenew,
+                updatedAt: new Date().toISOString(),
+              };
+              localStorage.setItem('subscriptionData', JSON.stringify(payload));
+            } catch {}
+          }
+        } catch (e: any) {
+          console.warn('Failed to resolve subscription from Stripe before cancel:', e?.message || e);
+        }
+      }
 
       const result = await cancelSubscription({
         user_id: userId,
         subscription_id: subscriptionId,
+        email: userEmail || undefined,
       });
 
       if (result.success) {
         try {
-          const email = userProfile?.email || "";
           const now = new Date();
           const payload = {
             subscriptionId: subscriptionId || `${userId}-${now.getTime()}`,
-            email,
+            email: userEmail,
             planId: (userSubscription?.plan || "free").toLowerCase(),
-            status: "canceled",
+            status: "cancelled",
             startDate: userSubscription?.activatedAt || now.toISOString(),
             renewalDate: now.toISOString(),
             expiresAt: now.toISOString(),
@@ -252,40 +284,16 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ subscription }) => {
               expiry: userSubscription?.expiry || "",
               price: userSubscription?.price,
               activatedAt: userSubscription?.activatedAt,
-              cancellationScheduledUntil: userSubscription?.expiry || "",
+              sessionId: userSubscription?.sessionId,
+              subscriptionId: userSubscription?.subscriptionId,
+              cancellationScheduledUntil: undefined,
             };
             setUserSubscription(updated);
             try { localStorage.setItem("userSubscription", JSON.stringify(updated)); } catch {}
           }
-        } catch {
-          const updated = {
-            plan: userSubscription?.plan || "Pro Plan",
-            status: "active",
-            expiry: userSubscription?.expiry || "",
-            price: userSubscription?.price,
-            activatedAt: userSubscription?.activatedAt,
-            cancellationScheduledUntil: userSubscription?.expiry || "",
-          };
-          setUserSubscription(updated);
-          try { localStorage.setItem("userSubscription", JSON.stringify(updated)); } catch {}
+        } catch (e) {
+          console.warn("Failed to refresh subscription:", e);
         }
-
-        // Immediately move user to Free plan locally
-        const now = new Date();
-        const updated = {
-          plan: "Free Plan",
-          status: "canceled",
-          expiry: now.toLocaleDateString(),
-          price: undefined,
-          activatedAt: userSubscription?.activatedAt,
-          sessionId: undefined,
-          subscriptionId: undefined,
-          cancellationScheduledUntil: undefined,
-        };
-        setUserSubscription(updated);
-        try { localStorage.setItem("userSubscription", JSON.stringify(updated)); } catch {}
-        setToast({ message: "Subscription canceled. You have been moved to Free plan.", type: "success" });
-        try { window.alert("Subscription canceled successfully"); } catch {}
       } else {
         setCheckoutError("Failed to cancel subscription. Please try again.");
         setToast({ message: "Failed to cancel subscription. Please try again.", type: "error" });

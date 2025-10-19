@@ -1,4 +1,4 @@
-import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
+import { Outlet, Link, useLocation } from "react-router-dom";
 
 const styles = {
   page: { minHeight: "100vh", padding: 24, background: "var(--bg-grad)" },
@@ -61,7 +61,6 @@ const styles = {
 };
 
 export default function AdminLayout() {
-  const nav = useNavigate();
   const location = useLocation();
   
   const logout = () => {

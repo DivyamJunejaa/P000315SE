@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
-import { fetchSubscription } from "../services/api";
+import { fetchSubscription, syncStripeSubscription, updateSubscription } from "../services/api";
 import SupportPanel from "../components/SupportPanel";
 import "../style/Nav.css";
 import logo from "../assets/logo.png";
@@ -37,6 +37,66 @@ const Navbar = () => {
 
       setIsLoadingPlan(true);
       try {
+        // Post-checkout recovery: if we have a pending session, sync it
+        const pendingSessionId = (() => {
+          try { return localStorage.getItem('pendingCheckoutSessionId') || null; } catch { return null; }
+        })();
+        const pendingPriceId = (() => {
+          try { return localStorage.getItem('pendingPlanId') || null; } catch { return null; }
+        })();
+
+        if (pendingSessionId) {
+          try {
+            console.info('🔄 Recovering subscription from pending Checkout session', { session_id: pendingSessionId });
+            const resp = await syncStripeSubscription({
+              session_id: pendingSessionId,
+              user_id: (user as any)?.userId,
+              email: user?.email,
+            });
+            if (resp?.success && resp?.data) {
+              const payload = {
+                subscriptionId: resp.data.subscriptionId,
+                email: resp.data.email,
+                planId: resp.data.planId,
+                status: resp.data.status,
+                startDate: resp.data.startDate,
+                renewalDate: resp.data.renewalDate,
+                expiresAt: resp.data.expiresAt,
+                autoRenew: resp.data.autoRenew,
+              };
+              try { await updateSubscription(payload); } catch (e) { console.warn('UpdateSubscription failed during recovery:', e); }
+
+              // Persist local state for gating/UI
+              try {
+                localStorage.setItem('subscriptionData', JSON.stringify(payload));
+                localStorage.setItem('planId', payload.planId);
+                const tier = detectTierFromPlanId(payload.planId || pendingPriceId);
+                localStorage.setItem('userPlan', tier);
+                // Legacy snapshot for Profile page
+                const legacy = {
+                  plan: tier === 'premium' ? 'Premium Plan' : tier === 'pro' ? 'Pro Plan' : 'Free Plan',
+                  price: '',
+                  status: payload.status,
+                  subscriptionId: payload.subscriptionId,
+                  sessionId: pendingSessionId,
+                  activatedAt: payload.startDate,
+                  expiry: payload.expiresAt,
+                };
+                localStorage.setItem('userSubscription', JSON.stringify(legacy));
+              } catch {}
+
+              // Clear pending markers
+              try {
+                localStorage.removeItem('pendingCheckoutSessionId');
+                localStorage.removeItem('pendingPlanId');
+                localStorage.removeItem('pendingPlanTier');
+              } catch {}
+            }
+          } catch (syncErr) {
+            console.warn('Checkout recovery sync failed:', syncErr);
+          }
+        }
+
         const result = await fetchSubscription();
 
         if (result.success && result.data) {
@@ -113,6 +173,36 @@ const Navbar = () => {
         <div className="navbar-left">
           <img src={logo} alt="Logo" className="navbar-logo" />
           <h1 className="navbar-title">Quality for Outcomes</h1>
+          {/* Subscription status pill */}
+          <span
+            style={{
+              marginLeft: 8,
+              padding: '4px 10px',
+              borderRadius: 9999,
+              fontSize: 12,
+              fontWeight: 600,
+              background:
+                userPlan === 'premium'
+                  ? 'rgba(234, 179, 8, 0.15)'
+                  : userPlan === 'pro'
+                  ? 'rgba(124, 58, 237, 0.15)'
+                  : 'rgba(107, 114, 128, 0.15)',
+              color:
+                userPlan === 'premium'
+                  ? '#92400e'
+                  : userPlan === 'pro'
+                  ? '#7c3aed'
+                  : '#6b7280',
+              border:
+                userPlan === 'premium'
+                  ? '1px solid #fbbf24'
+                  : userPlan === 'pro'
+                  ? '1px solid #a78bfa'
+                  : '1px solid #d1d5db',
+            }}
+          >
+            {isLoadingPlan ? 'Checking…' : userPlan === 'premium' ? 'Premium' : userPlan === 'pro' ? 'Pro' : 'Free'}
+          </span>
         </div>
 
         {/* Right: Hamburger menu only visible if user is logged in */}

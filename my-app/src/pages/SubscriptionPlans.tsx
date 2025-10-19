@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../style/Plans.css";
-import { createCheckoutSession } from "../services/api";
-import Toast from "../components/Toast";
+import { createCheckoutSession, cancelSubscription, updateSubscription, syncStripeSubscription } from "../services/api";
+ import Toast from "../components/Toast";
 
 type Plan = {
   id: "free" | "pro" | "premium";
@@ -63,27 +63,107 @@ export default function SubscriptionPlans() {
     }
   };
 
-  // Handle selecting Free plan without Stripe checkout
-  function selectFree() {
+  async function selectFree() {
     const userId = getUserId();
     if (!userId) {
       setToast({ message: "You must be logged in to select Free.", type: "error" });
       setError("You must be logged in to select Free.");
       return;
     }
+
+    // If already free, do nothing
     if (currentPlanId === "free") {
       setToast({ message: "Already on this plan.", type: "info" });
       setError("Already on this plan.");
       return;
     }
 
+    // When switching from Pro/Premium to Free, cancel the existing Stripe subscription
     setActivePlan("free");
     setError("");
 
-    // Redirect to success page where subscription syncing and localStorage update occurs
-    const successUrl = `${FRONTEND_ORIGIN}/subscription-success?status=success&plan=free&price=${encodeURIComponent("Free")}`;
-    // Navigate within SPA by stripping origin
-    navigate(successUrl.replace(FRONTEND_ORIGIN, ""));
+    const userEmail = (() => {
+      try {
+        const raw = localStorage.getItem("user");
+        if (!raw) return undefined;
+        const u = JSON.parse(raw);
+        return (u?.email || undefined) as string | undefined;
+      } catch { return undefined; }
+    })();
+
+    const localSub = (() => {
+      try {
+        const raw = localStorage.getItem("userSubscription");
+        return raw ? JSON.parse(raw) : null;
+      } catch { return null; }
+    })();
+
+    let subscriptionId = (() => {
+      try {
+        const subId = localSub?.subscriptionId;
+        if (subId && (String(subId).startsWith('sub_') || String(subId).startsWith('cs_'))) return String(subId);
+        const csId = localSub?.sessionId;
+        if (csId && typeof csId === 'string' && csId.startsWith('cs_') && csId !== 'cs_test_preview') return csId;
+        return undefined;
+      } catch { return undefined; }
+    })();
+
+    // Resolve canonical subscriptionId from Stripe before canceling
+    let synced: any = null;
+    if (!subscriptionId) {
+      try {
+        const sync = await syncStripeSubscription({ user_id: userId, email: userEmail });
+        if (sync?.success && sync?.data?.subscriptionId) {
+          subscriptionId = sync.data.subscriptionId;
+          synced = sync.data;
+        }
+      } catch (e: any) {
+        console.warn('Failed to resolve subscription from Stripe before cancel:', e?.message || e);
+      }
+    }
+
+    try {
+      const result = await cancelSubscription({
+        user_id: userId,
+        subscription_id: subscriptionId,
+        email: userEmail,
+      });
+
+      if (result.success) {
+        // Update database to reflect cancellation immediately
+        try {
+          const now = new Date();
+          const payload = {
+            subscriptionId: subscriptionId || `${userId}-${now.getTime()}`,
+            email: userEmail || (synced?.email ?? ''),
+            planId: (synced?.planId) || (localSub?.planId || 'unknown'),
+            status: 'cancelled',
+            startDate: synced?.startDate || localSub?.activatedAt || now.toISOString(),
+            renewalDate: synced?.renewalDate || now.toISOString(),
+            expiresAt: synced?.expiresAt || now.toISOString(),
+            autoRenew: false,
+          };
+          await updateSubscription(payload);
+        } catch (e) {
+          console.warn('Failed to sync cancellation to DB:', e);
+        }
+
+        setToast({ message: "Subscription canceled. Switched to Free.", type: "success" });
+        // Navigate to success page where local state sync can occur
+        const successUrl = `${FRONTEND_ORIGIN}/subscription-success?status=success&plan=free&price=${encodeURIComponent("Free")}`;
+        navigate(successUrl.replace(FRONTEND_ORIGIN, ""));
+      } else {
+        setToast({ message: "Failed to cancel subscription.", type: "error" });
+        setError("Failed to cancel subscription.");
+        setActivePlan(null);
+      }
+    } catch (err: any) {
+      const msg = err?.message || "Failed to cancel subscription";
+      console.error("Free plan selection → cancel failed:", err);
+      setToast({ message: msg, type: "error" });
+      setError(msg);
+      setActivePlan(null);
+    }
   }
 
   async function subscribe(plan: Plan) {
@@ -102,6 +182,35 @@ export default function SubscriptionPlans() {
       setToast({ message: "You must be logged in to subscribe.", type: "error" });
       return setError("You must be logged in to subscribe.");
     }
+
+    // Block duplicate payments for users already on Pro/Premium
+    if (currentPlanId !== "free") {
+      setToast({ message: "You are already on pro/premium plan", type: "warning" });
+      setError("You are already on pro/premium plan");
+      return;
+    }
+
+    // Prefer Payment Links when enabled
+    const USE_PAYMENT_LINKS = (process.env.REACT_APP_USE_PAYMENT_LINKS || "false").toLowerCase() === "true";
+    const PRO_LINK_URL = process.env.REACT_APP_STRIPE_LINK_PRO || "";
+    const PREMIUM_LINK_URL = process.env.REACT_APP_STRIPE_LINK_PREMIUM || "";
+    const baseLinkUrl = plan.id === 'pro' ? PRO_LINK_URL : plan.id === 'premium' ? PREMIUM_LINK_URL : null;
+
+    if (USE_PAYMENT_LINKS) {
+      if (baseLinkUrl) {
+        const params = new URLSearchParams();
+        if (userEmail) params.set('prefilled_email', userEmail);
+        params.set('client_reference_id', String(userId));
+        const linkUrl = `${baseLinkUrl}${baseLinkUrl.includes('?') ? '&' : '?'}${params.toString()}`;
+        console.info('Redirecting to Stripe Payment Link', { plan: plan.id, linkUrl });
+        window.location.href = linkUrl;
+        return;
+      }
+      setToast({ message: `Payment Link not configured for ${plan.id}.`, type: 'error' });
+      setError(`Payment Link not configured for ${plan.id}.`);
+      return;
+    }
+
     if (!plan.stripe_price_id) {
       setToast({ message: "Plan is not available.", type: "warning" });
       return setError("Plan is not available.");
@@ -113,26 +222,6 @@ export default function SubscriptionPlans() {
     
     setError("");
     setActivePlan(plan.id);
-    
-    // Optional Payment Links fallback (behind explicit flag)
-    const USE_PAYMENT_LINKS = (process.env.REACT_APP_USE_PAYMENT_LINKS || "false").toLowerCase() === "true";
-    const PRO_LINK_URL = process.env.REACT_APP_STRIPE_LINK_PRO || "";
-    const PREMIUM_LINK_URL = process.env.REACT_APP_STRIPE_LINK_PREMIUM || "";
-
-    // Prefer Payment Links only when explicitly enabled and URLs provided
-    if (USE_PAYMENT_LINKS) {
-      const baseLinkUrl = plan.id === 'pro' ? PRO_LINK_URL : plan.id === 'premium' ? PREMIUM_LINK_URL : null;
-      if (baseLinkUrl) {
-        // Build Payment Link with prefilled email and client reference id so Stripe shows/editable email
-        const params = new URLSearchParams();
-        if (userEmail) params.set('prefilled_email', userEmail);
-        params.set('client_reference_id', String(userId));
-        const linkUrl = `${baseLinkUrl}${baseLinkUrl.includes('?') ? '&' : '?'}${params.toString()}`;
-        console.info('Redirecting to Stripe Payment Link', { plan: plan.id, linkUrl });
-        window.location.href = linkUrl;
-        return;
-      }
-    }
 
     try {
       // Use API checkout when Payment Links are not configured
@@ -151,13 +240,20 @@ export default function SubscriptionPlans() {
         cancel_url: cancelUrl,
       });
 
-      const { url } = await createCheckoutSession({
-        price_id: plan.stripe_price_id,
+      const { url, session_id } = await createCheckoutSession({
+        price_id: plan.stripe_price_id!,
         user_id: userId || 'guest',
         email: userEmail || undefined,
         success_url: successUrl,
         cancel_url: cancelUrl,
       });
+
+      // Persist pending session so we can recover if Stripe doesn't auto-redirect
+      try {
+        if (session_id) localStorage.setItem('pendingCheckoutSessionId', session_id);
+        if (plan.stripe_price_id) localStorage.setItem('pendingPlanId', plan.stripe_price_id);
+        localStorage.setItem('pendingPlanTier', plan.id);
+      } catch {}
 
       console.info('Redirecting to Stripe Checkout', { url });
       window.location.href = url;
