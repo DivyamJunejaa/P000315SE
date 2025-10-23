@@ -25,7 +25,7 @@ export const fetchTerms = async () => {
  */
 export const updateTerms = async (content) => {
   try {
-    const response = await api.put("/api/admin/terms", { 
+    const response = await api.post("/api/admin/terms", { 
       content,
       updatedAt: new Date().toISOString()
     });

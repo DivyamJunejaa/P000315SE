@@ -170,16 +170,15 @@ export default function TermsManagement() {
     }
   };
 
-  const handleContentChange = (e) => {
-    const newContent = e.target.value;
-    setContent(newContent);
-    setHasChanges(newContent !== originalContent);
-    
-    // Clear any existing messages when user starts typing
-    if (message) {
-      setMessage(null);
-    }
-  };
+const handleContentChange = (newContent) => {
+  setContent(newContent);
+  setHasChanges(newContent !== originalContent);
+  
+  // Clear any existing messages when user starts typing
+  if (message) {
+    setMessage(null);
+  }
+};
 
   const handleSave = async () => {
     if (!hasChanges) {
@@ -442,7 +441,7 @@ export default function TermsManagement() {
           {editorMode === "rich" ? (
             <RichTextEditor
               value={content}
-              onChange={(val) => setContent(val || "")}
+              onChange={handleContentChange}  // Change this line
               placeholder="Enter the terms and conditions content here..."
               height={400}
             />
@@ -454,7 +453,7 @@ export default function TermsManagement() {
                 borderColor: hasChanges ? "#f59e0b" : "#d1d5db"
               }}
               value={content}
-              onChange={handleContentChange}
+              onChange={(e) => handleContentChange(e.target.value)}  // Change this line
               onKeyDown={handleKeyDown}
               placeholder="Enter the terms and conditions content here..."
               onFocus={(e) => {
