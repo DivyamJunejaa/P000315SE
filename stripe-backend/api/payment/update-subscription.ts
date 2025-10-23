@@ -1,10 +1,11 @@
+// POST /api/payment/update-subscription — syncs subscription details from Stripe
+// Accepts `subscription_id` or resolves via `session_id`; requires `STRIPE_SECRET_KEY`.
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { handleCORS } from '../utils/cors';
 
   export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleCORS(req, res)) return;
-
 
  
   
@@ -48,7 +49,8 @@ import { handleCORS } from '../utils/cors';
     }
 
     // Retrieve subscription details
-    const subscription = await stripe.subscriptions.retrieve(subId);
+    const subscriptionResponse = await stripe.subscriptions.retrieve(subId);
+    const subscription = subscriptionResponse as Stripe.Subscription;
 
     // Retrieve customer details; prefer email from Stripe customer to lock identity
     const customerId = (checkoutSession && checkoutSession.customer) || subscription.customer;
@@ -76,8 +78,8 @@ import { handleCORS } from '../utils/cors';
     const startDate = subscription.start_date 
       ? new Date(subscription.start_date * 1000).toISOString() 
       : new Date().toISOString();
-    const currentPeriodEnd = subscription.current_period_end 
-      ? new Date(subscription.current_period_end * 1000).toISOString() 
+    const currentPeriodEnd = (subscription as any).current_period_end 
+      ? new Date((subscription as any).current_period_end * 1000).toISOString() 
       : startDate;
 
     return res.status(200).json({

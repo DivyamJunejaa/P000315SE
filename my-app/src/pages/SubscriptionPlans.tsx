@@ -12,8 +12,11 @@ type Plan = {
   stripe_price_id?: string; // Stripe price ID for API checkout
 };
 
+// Page: SubscriptionPlans — lets users choose Free, Pro, or Premium.
+// Explains plan selection, Payment Links fallback, and Stripe Checkout session creation.
 export default function SubscriptionPlans() {
   const navigate = useNavigate();
+  // Local UI state: available plans, errors, current active plan, and toast feedback
   const [plans, setPlans] = useState<Plan[]>([]);
   const [error, setError] = useState<string>("");
   const [activePlan, setActivePlan] = useState<string | null>(null);
@@ -52,6 +55,7 @@ export default function SubscriptionPlans() {
     }
   }, []);
 
+  // Helper: parse user details from localStorage for checkout payload
   const getUserId = () => {
     try {
       const raw = localStorage.getItem("user");
@@ -86,6 +90,7 @@ export default function SubscriptionPlans() {
     navigate(successUrl.replace(FRONTEND_ORIGIN, ""));
   }
 
+  // Subscribe to paid plan via Stripe: Payment Links (optional) or Checkout API
   async function subscribe(plan: Plan) {
     const userId = getUserId();
     const userEmail = (() => {
@@ -173,6 +178,7 @@ export default function SubscriptionPlans() {
     }
   }
 
+  // Render: plan cards with features, price, actions, and helper navigation
   return (
     <div className="login-container">
       <div className="login-card plans-card">

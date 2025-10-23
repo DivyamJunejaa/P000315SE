@@ -1,86 +1,83 @@
-# QFO Admin Backend
+# QFO Admin Backend (Vercel Functions)
 
-Serverless backend for admin APIs deployed on Vercel.
+Simple serverless backend for the admin dashboard and auth, deployed on Vercel. This README focuses on clear, step-by-step setup and usage.
 
-## Development
+## Quick Start
 
-1. Install dependencies: `npm install`
-2. Local Express dev server: `node dev-server.js` (or `npm run dev` for Vercel functions)
-3. Ensure `.env` has `PORT=4001` and optionally `DISABLE_AUTH=1` for local testing.
+- Prerequisites: Node.js 18+, a Vercel account (optional for local), Stripe test keys (optional), and a terminal.
+- Install dependencies: `npm install`
+- Create `.env` (see below) at project root.
+- Run locally (Express dev server): `node dev-server.js` (port defaults to `4001`)
+- Or run serverless functions locally: `npm run dev` (if configured via Vercel CLI)
+- Test an endpoint: open `http://localhost:4001/api/hello?name=Admin`
 
-## Environment Variables
+## Environment Setup
 
-Create a `.env` at the project root:
+Create a `.env` file with the variables you need. Start with minimal values for local:
 
 ```
-SUPABASE_URL=your_supabase_url
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+# Development basics
+PORT=4001
+DISABLE_AUTH=1               # Local only; bypasses verification
+VERBOSE=1                    # Optional: enable extra logs
 
+# JWT (used for local login/verify if external auth is not set)
+JWT_SECRET=change-me-in-prod
+JWT_EXPIRES_IN=7d
+ALLOW_STUB_LOGIN=1           # Allow stub login locally (disable in prod)
+
+# Stripe (optional; enables real dashboard data)
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_PRO_PRICE_ID=price_...
 STRIPE_PREMIUM_PRICE_ID=price_...
-STRIPE_PRO_PRODUCT_ID=prod_...            # optional: match by Product ID
-STRIPE_PREMIUM_PRODUCT_ID=prod_...        # optional: match by Product ID
+# Optional product IDs when multiple prices exist per tier
+STRIPE_PRO_PRODUCT_ID=prod_...
+STRIPE_PREMIUM_PRODUCT_ID=prod_...
 
-# External token verification (Option B)
-USER_SERVICE_BASE_URL=https://nodejs-serverless-function-express-rho-ashen.vercel.app
+# External token verification (recommended for production)
+USER_SERVICE_BASE_URL=https://your-user-service-url
 USER_SERVICE_VERIFY_PATH=/api/auth/Verify
-
-# JWT (local verification) and security controls
-JWT_SECRET=your_production_jwt_secret
-JWT_EXPIRES_IN=7d
-# Disable all auth checks only in non-production (local testing)
-DISABLE_AUTH=0
-# Explicitly allow stub login in production (default disabled)
-ALLOW_STUB_LOGIN=0
 ```
 
-Also set these in Vercel Project Settings → Environment Variables.
+In production, set these in Vercel → Project Settings → Environment Variables. Do not use `DISABLE_AUTH=1` in production.
 
-### Auth Modes
+## Common Commands
 
-- External verification (recommended): set `USER_SERVICE_BASE_URL` to your user service; backend verifies tokens at `USER_SERVICE_VERIFY_PATH`.
-- Local JWT verification (fallback): omit `USER_SERVICE_BASE_URL`; backend verifies tokens it issues via `/api/auth/login` using `JWT_SECRET`.
-- Dev bypass: `DISABLE_AUTH=1` only works when `NODE_ENV!==production`. In production, auth bypass is disabled.
-- Stub login in production: disabled by default; use `ALLOW_STUB_LOGIN=1` if you must enable temporarily (not recommended).
+- Run dev server (Express): `node dev-server.js`
+- Run tests: `npm test`
+- Run tests with coverage: `npm test -- --coverage`
 
-## Stripe Webhook
+## Key Endpoints
 
-- Endpoint: `POST /api/webhooks/stripe`
-- Configure a Stripe webhook endpoint to point to your deployed URL, e.g. `https://<your-vercel-project>.vercel.app/api/webhooks/stripe`.
-- Events to enable:
-  - `customer.subscription.created`
-  - `customer.subscription.updated`
-  - `customer.subscription.deleted`
-  - `invoice.payment_succeeded`
-  - `invoice.payment_failed`
-  - `customer.created`
-  - `customer.updated`
+- `GET /api/hello` — simple health check with optional `name` query.
+- `POST /api/auth/login` — stub login; returns a JWT for local development.
+- `GET /api/auth/verify` — verifies the current admin token.
+- `GET /api/dashboard` — returns dashboard metrics.
+- `POST /api/webhooks/stripe` — handles Stripe events (set `STRIPE_WEBHOOK_SECRET`).
 
-After creating the endpoint in Stripe Dashboard, copy the `Signing secret` and set it as `STRIPE_WEBHOOK_SECRET`.
+## Stripe Webhook (Optional)
 
-### Local Testing
-
-Use Stripe CLI to forward events:
+- Configure a Stripe webhook endpoint to your deployment URL: `https://<project>.vercel.app/api/webhooks/stripe`.
+- Recommended events:
+  - `customer.subscription.created | updated | deleted`
+  - `invoice.payment_succeeded | invoice.payment_failed`
+  - `customer.created | customer.updated`
+- Local testing via Stripe CLI:
 
 ```
 stripe login
-stripe listen --forward-to localhost:3000/api/webhooks/stripe
+stripe listen --forward-to localhost:4001/api/webhooks/stripe
 ```
 
-### Frontend (qfo-admin) Dev Setup
+## Auth Modes
 
-- Vite dev server runs at `http://localhost:5173`.
-- Proxy forwards `/api` to backend on `http://localhost:4001`.
-- Axios `baseURL` is relative (`/`) in development so the proxy applies.
-- In `qfo-admin/.env.development`, set `VITE_DEV_BYPASS_AUTH=true` to bypass ProtectedRoute locally.
-- Backend `.env` can set `DISABLE_AUTH=1` to make `/api/dashboard` accessible without external token verification.
+- External verification (recommended): set `USER_SERVICE_BASE_URL` and `USER_SERVICE_VERIFY_PATH`. Backend verifies tokens externally.
+- Local JWT verification: omit external variables and use tokens from `/api/auth/login` with `JWT_SECRET`.
+- Dev bypass: `DISABLE_AUTH=1` only in local development.
 
-With this setup, hitting `http://localhost:5173/api/dashboard` returns either:
-- Live Stripe aggregate data if `STRIPE_SECRET_KEY` is configured; message: `Dashboard data retrieved successfully`.
-- Demo payload if Stripe keys are absent; message: `Demo dashboard (no STRIPE_SECRET_KEY configured)`.
+## Troubleshooting
 
-Notes:
-- Premium/Pro totals count ONLY `active` subscriptions.
-- Tier detection matches either `price.id` (via `STRIPE_*_PRICE_ID`) or, if provided, `product.id` (via `STRIPE_*_PRODUCT_ID`). Use Product IDs when multiple prices exist under one tier.
+- Unauthorized on `/api/dashboard` locally: set `DISABLE_AUTH=1` in `.env` OR pass a valid token in `Authorization: Bearer <token>` header.
+- No Stripe data: configure `STRIPE_SECRET_KEY` or you will receive demo payloads for metrics.
+- Security warnings: you may see warnings about default JWT secrets in logs; set real secrets in production.

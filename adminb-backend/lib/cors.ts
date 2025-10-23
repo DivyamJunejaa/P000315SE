@@ -1,3 +1,4 @@
+// Simple CORS helpers: set headers, handle preflight, and block disallowed origins.
 import { VercelRequest, VercelResponse } from '@vercel/node'
 
 type Handler = (req: VercelRequest, res: VercelResponse) => Promise<void> | void
@@ -75,6 +76,7 @@ function isOriginAllowed(origin: string | undefined): boolean {
 // Apply CORS Headers
 // ============================================================================
 
+// Core function: apply CORS headers and short-circuit OPTIONS preflight.
 export function applyCors(req: VercelRequest, res: VercelResponse): boolean {
     const origin = req.headers.origin
 
@@ -111,6 +113,7 @@ export function applyCors(req: VercelRequest, res: VercelResponse): boolean {
 // CORS Middleware Wrapper
 // ============================================================================
 
+// Wrapper: run CORS first; if not preflight, pass to the actual handler.
 export function withCors(handler: Handler) {
     return async (req: VercelRequest, res: VercelResponse) => {
         const preflightHandled = applyCors(req, res)
@@ -153,6 +156,7 @@ export function withCors(handler: Handler) {
 // Development Helper
 // ============================================================================
 
+// Dev helper: loosen CORS completely for quick testing and local tools.
 export function allowAllOrigins() {
     return (req: VercelRequest, res: VercelResponse) => {
         res.setHeader('Access-Control-Allow-Origin', '*')

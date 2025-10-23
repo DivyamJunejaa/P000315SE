@@ -10,9 +10,9 @@ export const config = {
 
 function readRawBody(req: VercelRequest): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-        const chunks: Buffer[] = []
-        req.on('data', (chunk) => chunks.push(Buffer.from(chunk)))
-        req.on('end', () => resolve(Buffer.concat(chunks)))
+        const chunks: Uint8Array[] = []
+        req.on('data', (chunk) => chunks.push(chunk as Uint8Array))
+        req.on('end', () => resolve(Buffer.concat(chunks as any)))
         req.on('error', (err) => reject(err))
     })
 }
@@ -30,10 +30,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(500).json({ error: 'Stripe env vars missing' })
     }
 
-    // Initialize Stripe with correct API version
-    const stripe = new Stripe(stripeSecretKey, {
-        apiVersion: '2025-09-30.clover',
-    })
+    // Initialize Stripe; rely on library default API version to avoid type mismatches
+    const stripe = new Stripe(stripeSecretKey)
 
     let event: Stripe.Event
 

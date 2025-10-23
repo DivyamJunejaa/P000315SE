@@ -1,23 +1,31 @@
-﻿import type { VercelRequest, VercelResponse } from '@vercel/node';
+// POST /api/payment/create-checkout-session — creates a Stripe Checkout Session
+// Normalizes success/cancel URLs to your frontend and protects against duplicates.
+// Requires `STRIPE_SECRET_KEY`.
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 import { handleCORS } from '../utils/cors';
 
-const stripeSecret = process.env.STRIPE_SECRET_KEY;
-const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
-
+// Main handler: validates input, resolves frontend URLs, and avoids duplicate sessions.
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (handleCORS(req, res)) return;
+  // Short-circuit CORS preflight; otherwise continue request handling.
+if (handleCORS(req, res)) return;
 
 
  
 
-  if (req.method !== 'POST') {
+  // Only allow POST for creating checkout sessions.
+if (req.method !== 'POST') {
     return res.status(405).json({
       success: false,
       message: 'Method not allowed'
     });
   }
+
+  // Initialize Stripe lazily after method check to avoid import-time failures in tests
+  // Initialize Stripe lazily after method check to avoid import-time failures in tests
+const stripeSecret = process.env.STRIPE_SECRET_KEY;
+  const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
 
   try {
     const { price_id, user_id, email, success_url, cancel_url } = req.body;
@@ -47,7 +55,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Derive frontend origin (prefer request Origin header, then FRONTEND_ORIGIN, then success_url host, finally localhost:3000)
-    let frontendOrigin = 'http://localhost:3000';
+    // Resolve the frontend origin to ensure redirects point to the UI, not backend.
+let frontendOrigin = 'http://localhost:3000';
     try {
       if (req.headers && req.headers.origin) {
         frontendOrigin = req.headers.origin;
@@ -68,7 +77,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('🔗 Resolved frontendOrigin for redirects:', frontendOrigin);
 
     // Helper to ensure provided URLs always point to the frontend origin (never the backend)
-    const normalizeUrlToFrontend = (url: string | undefined, fallbackPath = '/subscription-success') => {
+    // Helper: force any provided URL to use the resolved frontend origin.
+const normalizeUrlToFrontend = (url: string | undefined, fallbackPath = '/subscription-success') => {
       try {
         const base = new URL(frontendOrigin);
         // If url is relative or missing, start from fallbackPath
@@ -85,7 +95,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Resolve or create a Stripe Customer for this user to lock email editing on Checkout
     // Priority: search by metadata user_id, then by email, with robust fallbacks; finally create if missing
-    let customer: Stripe.Customer | null = null;
+    // Try to find or create a Stripe Customer to associate the checkout.
+let customer: Stripe.Customer | null = null;
     try {
       // Try search by metadata user_id
       const byMeta = await stripe.customers.search({
@@ -131,16 +142,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else {
       // Ensure Stripe Customer email matches logged-in email to lock Checkout email field
       try {
-        const cust = await stripe.customers.retrieve(customer.id);
-        const currentEmail = (cust && !cust.deleted && cust.email) || undefined;
+        const custAny: any = await stripe.customers.retrieve(customer.id);
+        const isDeleted = !!(custAny && custAny.deleted);
+        const currentEmail = (!isDeleted && custAny?.email) || undefined;
         if (email && (!currentEmail || currentEmail.toLowerCase() !== email.toLowerCase())) {
           await stripe.customers.update(customer.id, { email });
           customer.email = email; // reflect update locally
         }
         // Also ensure user_id metadata is present
-        const meta = (cust && !cust.deleted && cust.metadata) || {};
-        if (String(meta.user_id || '') !== user_id.toString()) {
-          await stripe.customers.update(customer.id, { metadata: { ...meta, user_id: user_id.toString() } });
+        const meta: any = (!isDeleted && custAny?.metadata) || {};
+        if (String((meta?.user_id || '')) !== user_id.toString()) {
+          await stripe.customers.update(customer.id, { metadata: { ...(meta || {}), user_id: user_id.toString() } });
         }
       } catch (custUpdateErr: any) {
         console.warn('Failed to align customer email/metadata:', custUpdateErr.message);
@@ -149,7 +161,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // If customer already has an active subscription, avoid duplicate subscriptions
     try {
-      const existingSubs = await stripe.subscriptions.list({
+      // If a paid subscription already exists, redirect to Billing Portal instead of Checkout.
+const existingSubs = await stripe.subscriptions.list({
         customer: customer.id,
         status: 'active',
         limit: 1,
@@ -222,7 +235,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Compute effective redirect URLs, ensuring they target the frontend
-    const effectiveSuccessUrl = normalizeUrlToFrontend(
+    // Compute final redirect URLs pinned to the frontend origin.
+const effectiveSuccessUrl = normalizeUrlToFrontend(
       success_url || `${frontendOrigin}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
       '/subscription-success'
     );
@@ -234,7 +248,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Create checkout session
     // Build a stable idempotency key that varies with meaningful parameters to avoid Stripe
     // complaints when the same user/price is used with different URLs or customer contexts.
-    const idemKeyBase = JSON.stringify({
+    // Build an idempotency key so repeated requests don’t create duplicate sessions.
+const idemKeyBase = JSON.stringify({
       user_id: user_id.toString(),
       price_id: String(price_id),
       success_url: effectiveSuccessUrl,
@@ -294,3 +309,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 }
+// POST /api/payment/create-checkout-session — creates a Stripe Checkout Session
+// Normalizes success/cancel URLs to your frontend and protects against duplicates.
+// Requires `STRIPE_SECRET_KEY`.

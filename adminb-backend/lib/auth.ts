@@ -1,3 +1,5 @@
+// Plain-English notes: helpers for admin authentication, tokens, and password utilities.
+// These functions create and verify JWTs, hash passwords, and extract tokens from requests.
 import 'dotenv/config'
 import { sign as jwtSign, verify as jwtVerify, type SignOptions, type Secret, type JwtPayload } from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
@@ -110,6 +112,7 @@ if (AUTH_BYPASS) {
 // Token Generation
 // ============================================================================
 
+// Create an access token that states who the admin is and for how long.
 export function generateToken(user: AdminUser, sessionId?: string): string {
     const payload: JWTPayload = {
         userId: user.id,
@@ -125,6 +128,7 @@ export function generateToken(user: AdminUser, sessionId?: string): string {
     return jwtSign(payload, JWT_SECRET as Secret, options)
 }
 
+// Create a refresh token so clients can get a new access token later.
 export function generateRefreshToken(userId: string, sessionId?: string, tokenVersion?: number): string {
     const payload: RefreshTokenPayload = {
         userId,
@@ -139,6 +143,7 @@ export function generateRefreshToken(userId: string, sessionId?: string, tokenVe
     return jwtSign(payload, JWT_REFRESH_SECRET as Secret, options)
 }
 
+// Convenient helper: build both tokens at once and return their expiry in seconds.
 export function generateTokenPair(user: AdminUser, sessionId?: string): TokenPair {
     const sid = sessionId || generateSessionId()
     const accessToken = generateToken(user, sid)
@@ -152,10 +157,12 @@ export function generateTokenPair(user: AdminUser, sessionId?: string): TokenPai
     }
 }
 
+// Simple unique session id used to tie tokens and requests together.
 function generateSessionId(): string {
     return `sess_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
 }
 
+// Turn strings like '7d' or '30d' into seconds; used for expiry math.
 function parseExpiry(expiry: string): number {
     const match = expiry.match(/^(\d+)([smhd])$/)
     if (!match) return 604800 // Default 7 days in seconds
@@ -176,6 +183,7 @@ function parseExpiry(expiry: string): number {
 // Token Verification
 // ============================================================================
 
+// Check a JWT and optionally require a certain admin role.
 export function verifyToken(token: string, options?: VerifyOptions): JWTPayload | null {
     try {
         const decoded = jwtVerify(token, JWT_SECRET as Secret, {
@@ -198,6 +206,7 @@ export function verifyToken(token: string, options?: VerifyOptions): JWTPayload 
     }
 }
 
+// Validate the refresh token used to mint a new access token.
 export function verifyRefreshToken(token: string): RefreshTokenPayload | null {
     try {
         return jwtVerify(token, JWT_REFRESH_SECRET as Secret) as RefreshTokenPayload
@@ -211,11 +220,13 @@ export function verifyRefreshToken(token: string): RefreshTokenPayload | null {
 // Password Utilities
 // ============================================================================
 
+// Turn a plain password into a secure hash to store in the database.
 export async function hashPassword(password: string): Promise<string> {
     const saltRounds = 12
     return bcrypt.hash(password, saltRounds)
 }
 
+// Compare a login password to the stored hash, returns true if they match.
 export async function comparePassword(password: string, hashedPassword: string): Promise<boolean> {
     return bcrypt.compare(password, hashedPassword)
 }
@@ -224,6 +235,7 @@ export async function comparePassword(password: string, hashedPassword: string):
 // Request Token Extraction
 // ============================================================================
 
+// Try to find a token in headers, cookies, or query string to authenticate the request.
 export function extractTokenFromRequest(req: VercelRequest): string | null {
     // Check Authorization header
     const authHeader = req.headers.authorization

@@ -1,15 +1,19 @@
+// POST /api/payment/cancel-subscription â€” cancels one or more subscriptions.
+// Accepts a specific `subscription_id` or cancels all active ones for a user.
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { handleCORS } from '../utils/cors';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
 const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
+// Main handler: verifies method, checks configuration, and performs cancellation.
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleCORS(req, res)) return;
 
 
 
-  if (req.method !== 'POST') {
+  // Only allow POST; cancellations are state-changing operations.
+if (req.method !== 'POST') {
     return res.status(405).json({
       success: false,
       message: 'Method not allowed'
@@ -74,21 +78,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
         
-        // Cancel behavior: immediate only — remove scheduling
+        // Cancel behavior: immediate only ï¿½ remove scheduling
         const subscription = await stripe.subscriptions.cancel(actualSubscriptionId);
 
         // Tag customer metadata to indicate canceled by user
         try {
           const custId = subscription.customer as string;
           if (custId) {
-            const cust = await stripe.customers.retrieve(custId);
-            const meta = (cust && cust.metadata) || {};
-            await stripe.customers.update(custId, { 
-              metadata: { 
-                ...meta, 
-                canceled_by_user: 'true', 
-                canceled_at: String(subscription.canceled_at || Math.floor(Date.now()/1000)) 
-              } 
+            const custResponse = await stripe.customers.retrieve(custId);
+            const meta = ('deleted' in custResponse) ? {} : (custResponse.metadata ?? {});
+            await stripe.customers.update(custId, {
+              metadata: {
+                ...meta,
+                canceled_by_user: 'true',
+                canceled_at: String(subscription.canceled_at || Math.floor(Date.now()/1000))
+              }
             });
           }
         } catch (metaErr: any) {
@@ -156,7 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const custId = canceled.customer as string;
             if (custId) {
               const cust = await stripe.customers.retrieve(custId);
-              const meta = (cust && cust.metadata) || {};
+              const meta = ('deleted' in cust) ? {} : (cust.metadata ?? {});
               await stripe.customers.update(custId, { 
                 metadata: { 
                   ...meta, 

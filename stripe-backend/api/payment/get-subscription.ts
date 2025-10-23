@@ -1,11 +1,13 @@
+// GET/POST /api/payment/get-subscription — retrieves a subscription summary
+// Accepts `subscription_id` or resolves via `session_id`; requires `STRIPE_SECRET_KEY`.
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { handleCORS } from '../utils/cors';
 
-  export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Main handler: validates inputs, resolves subscription from session if needed, and returns summary.
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleCORS(req, res)) return;
   
-
 
 
   // Ensure Stripe is configured before proceeding
@@ -44,7 +46,8 @@ import { handleCORS } from '../utils/cors';
       subId = session.subscription as string;
     }
 
-    const subscription = await stripe.subscriptions.retrieve(subId);
+    const subscriptionResponse = await stripe.subscriptions.retrieve(subId);
+    const subscription = subscriptionResponse as Stripe.Subscription;
 
     // Extract minimal fields useful to the frontend
     const item = subscription.items?.data?.[0];
@@ -57,8 +60,8 @@ import { handleCORS } from '../utils/cors';
       data: {
         subscriptionId: subscription.id,
         status: subscription.status,
-        current_period_end: subscription.current_period_end,
-        current_period_start: subscription.current_period_start,
+        current_period_end: (subscription as any).current_period_end,
+        current_period_start: (subscription as any).current_period_start,
         planId,
         interval,
         amount,

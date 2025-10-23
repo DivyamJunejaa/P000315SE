@@ -431,22 +431,4 @@ export class ResponseUtils {
  * }
  * ```
  * 
- * BEST PRACTICES:
- * 
- * 1. Always use send() method to actually send the response
- * 2. Use specific status helpers (created, notFound, etc.) instead of generic error()
- * 3. Provide meaningful error messages for better debugging
- * 4. Include validation details in validationError responses
- * 5. Use handleServiceError for consistent error handling across services
- * 
- * STATUS CODE SELECTION GUIDE:
- * 
- * 200 OK          → Successful GET, PUT, DELETE operations
- * 201 Created     → Successful POST creating new resource
- * 400 Bad Request → Invalid input, validation failures
- * 401 Unauthorized → Missing or invalid authentication
- * 403 Forbidden   → Authenticated but insufficient permissions
- * 404 Not Found   → Resource doesn't exist
- * 409 Conflict    → Duplicate resource, state conflicts
- * 500 Server Error → Unexpected server errors
  */

@@ -1,6 +1,9 @@
+// GET /api/auth/verify — verifies current admin token and returns user info
+// Uses external service or local JWT depending on configuration.
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { verifyAdminAuto } from '../../lib/auth'
 
+// Handler: only accepts GET and returns the current admin user if valid.
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET')

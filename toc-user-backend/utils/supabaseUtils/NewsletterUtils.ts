@@ -414,12 +414,4 @@ export async function exportNewsletterSubscribers(): Promise<string[]> {
  *   growthRate: (recentSubs.length / totalSubscribers) * 100
  * };
  * 
- * GDPR COMPLIANCE NOTES:
- * 
- * - Always provide clear opt-in (no pre-checked boxes)
- * - Include unsubscribe link in every email
- * - Honor unsubscribe requests immediately
- * - Keep records of subscription timestamps
- * - Allow users to export their data
- * - Delete data upon request (right to be forgotten)
  */

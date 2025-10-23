@@ -1,3 +1,5 @@
+// Simple role-based routing helpers for My App.
+// Determines if a user is admin vs regular and redirects accordingly.
 import { NavigateFunction } from "react-router-dom";
 
 export type UserRole = "admin" | "user";
@@ -10,6 +12,7 @@ export type User = {
   [key: string]: any;
 };
 
+// Pick the role from various possible fields, defaulting to "user".
 export function determineUserRole(user: User): UserRole {
   const r = (user?.role ?? user?.userRole ?? user?.user_role ?? "user").toString().toLowerCase();
   return r === "admin" ? "admin" : "user";
@@ -35,6 +38,7 @@ function getMyAppDashboardUrl(): string {
   return envUrl;
 }
 
+// Redirect admins to the admin app (full page) and users within my-app.
 export function handleRoleBasedRedirect(user: User, navigate: NavigateFunction) {
   const role = determineUserRole(user);
   if (role === "admin") {
@@ -48,7 +52,6 @@ export function handleRoleBasedRedirect(user: User, navigate: NavigateFunction) 
     window.location.assign(url.toString());
     return;
   }
-  debugger;
   // Regular user: navigate within my-app
   navigate(getMyAppDashboardUrl(), { replace: true });
 }

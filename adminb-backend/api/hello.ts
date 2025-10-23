@@ -1,3 +1,5 @@
+// GET /api/hello — simple JSON greeting for quick health checks
+// Accepts optional `name` query parameter.
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { withCors } from '../lib/cors';
 

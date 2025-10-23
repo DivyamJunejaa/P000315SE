@@ -1,3 +1,5 @@
+// Endpoint to collect and return dashboard metrics for the admin UI.
+// Uses Stripe for real data when keys are present; otherwise returns demo data.
 import 'dotenv/config'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { verifyAdminAuto } from '../lib/auth'
@@ -7,6 +9,7 @@ import Stripe from 'stripe'
 const VERBOSE = ['1', 'true', 'yes'].includes(String(process.env.VERBOSE || '').toLowerCase())
 const log = (...args: any[]) => { if (VERBOSE) console.log('[dashboard]', ...args) }
 
+// Main handler: validates method and auth, then builds metrics payload.
 async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'GET') {
         res.setHeader('Allow', 'GET')
@@ -50,6 +53,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     if (!stripeSecretKey) {
         // Demo fallback payload to enable local UI testing without Stripe keys
         const months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep']
+        // Final response: combine overview stats, charts, and a recent list.
         const payload = {
             success: true,
             message: 'Demo dashboard (no STRIPE_SECRET_KEY configured)',
@@ -93,13 +97,14 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     log('stripe init OK')
 
     // Price/Product IDs provided by environment for Pro and Premium tiers
-    const PRO_PRICE_ID = process.env.STRIPE_PRO_PRICE_ID || 'price_1S8tsnQTtrbKnENdYfv6azfr'
-    const PREMIUM_PRICE_ID = process.env.STRIPE_PREMIUM_PRICE_ID || 'price_1SB17tQTtrbKnENdT7aClaEe'
+    const PRO_PRICE_ID = process.env.STRIPE_PRO_PRICE_ID || 'price_1SJOoqQTtrbKnENdq6xX75de'
+    const PREMIUM_PRICE_ID = process.env.STRIPE_PREMIUM_PRICE_ID || 'price_1SJP2sQTtrbKnENdbIpAzwMv'
     const PRO_PRODUCT_ID = process.env.STRIPE_PRO_PRODUCT_ID || undefined
     const PREMIUM_PRODUCT_ID = process.env.STRIPE_PREMIUM_PRODUCT_ID || undefined
     log('tier ids', { PRO_PRICE_ID, PREMIUM_PRICE_ID, PRO_PRODUCT_ID, PREMIUM_PRODUCT_ID })
 
     // Helper: get month start/end timestamps
+    // Helper: compute UNIX second range for the current month.
     function monthBounds(date: Date) {
         const start = new Date(date.getFullYear(), date.getMonth(), 1)
         const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59)
@@ -107,6 +112,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Helper: get day start/end timestamps
+    // Helper: compute UNIX second range for the current day.
     function dayBounds(date: Date) {
         const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0)
         const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59)
@@ -127,6 +133,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         // List subscriptions and compute status tallies and tier counts
+        // Helper: page through Stripe subscriptions and tally statuses and tiers.
         async function countByPrice() {
             let starting_after: string | undefined = undefined
             let pro = 0, premium = 0, total = 0, active = 0, trialing = 0, past_due = 0, canceled = 0, incomplete = 0
@@ -260,6 +267,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
             quarterlyCount,
         })
 
+        // Final response: combine overview stats, charts, and a recent list.
         const payload = {
             success: true,
             message: 'Dashboard data retrieved successfully',

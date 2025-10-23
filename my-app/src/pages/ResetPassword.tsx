@@ -13,8 +13,12 @@ interface ResetForm {
   confirmPassword: string;
 }
 
+// Page: ResetPassword — verifies reset code and lets the user set a new password.
+// Flow: read email (URL/localStorage) → validate inputs → call API → redirect.
 const ResetPassword: React.FC = () => {
+  // Search params for email handoff (from link) and local storage fallback
   const [searchParams] = useSearchParams();
+  // Local form state for email, token, and new passwords
   const [form, setForm] = useState<ResetForm>({
     email: "",
     token: "",
@@ -23,7 +27,7 @@ const ResetPassword: React.FC = () => {
   });
 
   useEffect(() => {
-    // Get email from URL params or localStorage
+    // On mount: populate email from URL `?email=` or previously stored `resetEmail`
     const emailFromUrl = searchParams.get('email');
     const emailFromStorage = localStorage.getItem('resetEmail');
     const email = emailFromUrl || emailFromStorage || '';
@@ -33,17 +37,20 @@ const ResetPassword: React.FC = () => {
     }
   }, [searchParams]);
 
+  // UI flags and router navigate helper
   const [show, setShow] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
+  // Controlled inputs update handler
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
+  // Validate: email present, token present, password strength, and match
   const validateForm = (): string => {
     if (!form.email.trim()) return "Email is required. Please go back to the forgot password page.";
     if (!form.token.trim()) return "Please enter your reset code.";
@@ -56,6 +63,7 @@ const ResetPassword: React.FC = () => {
     return "";
   };
 
+  // Submit handler: validate, call API to reset, show success then redirect
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const err = validateForm();
@@ -78,7 +86,7 @@ const ResetPassword: React.FC = () => {
 
       if (response.success) {
         setSuccess(true);
-        // Redirect to login after 2 seconds
+        // Brief pause to let users read success, then navigate to login
         setTimeout(() => {
           navigate("/login");
         }, 2000);
@@ -95,6 +103,7 @@ const ResetPassword: React.FC = () => {
     }
   };
 
+  // Render: form fields for email, token, password + helper links
   return (
     <div className="login-container">
       <form onSubmit={handleSubmit} className="login-card login-mode">

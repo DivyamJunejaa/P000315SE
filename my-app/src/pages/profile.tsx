@@ -1,3 +1,10 @@
+/*
+  Profile Page: loads user profile, shows subscription details, and enables editing.
+  - Fetches user profile on mount and initializes edit form
+  - Reads unified subscription data from localStorage (prefers `subscriptionData`)
+  - Supports upgrading via local plans page and canceling subscriptions
+  - Handles loading/error states and provides success/error toasts
+*/
 import React, { useState, useEffect } from "react";
 import ConfirmModal from "../components/ConfirmModal";
 import Toast from "../components/Toast";
@@ -8,8 +15,8 @@ import "../style/profile.css";
 const detectTierFromPlanId = (planId?: string | null): 'free' | 'pro' | 'premium' => {
   const id = String(planId || '').toLowerCase();
   if (!id || id.includes('free') || id === 'price_free') return 'free';
-  const PRO_ID = (process.env.REACT_APP_STRIPE_PRICE_PRO || 'price_1S8tsnQTtrbKnENdYfv6azfr').toLowerCase();
-  const PREMIUM_ID = (process.env.REACT_APP_STRIPE_PRICE_PREMIUM || 'price_1SB17tQTtrbKnENdT7aClaEe').toLowerCase();
+  const PRO_ID = (process.env.REACT_APP_STRIPE_PRICE_PRO || 'price_1SJOoqQTtrbKnENdq6xX75de').toLowerCase();
+  const PREMIUM_ID = (process.env.REACT_APP_STRIPE_PRICE_PREMIUM || 'price_1SJP2sQTtrbKnENdbIpAzwMv').toLowerCase();
   if (id === PRO_ID || id.includes('pro')) return 'pro';
   if (id === PREMIUM_ID || id.includes('premium')) return 'premium';
   return 'free';
@@ -48,6 +55,7 @@ type ProfilePageProps = {
   subscription?: Subscription;
 };
 
+// Component state: profile, subscription, UI flags, edit form, and messages
 const ProfilePage: React.FC<ProfilePageProps> = ({ subscription }) => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userSubscription, setUserSubscription] = useState<Subscription | null>(null);
@@ -66,7 +74,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ subscription }) => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  // On mount: load profile from API and subscription from localStorage
+useEffect(() => {
     const loadUserProfile = async () => {
       try {
         setLoading(true);
@@ -150,7 +159,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ subscription }) => {
     loadSubscriptionData();
   }, []);
 
-  const handleEditToggle = () => {
+  // Toggle edit mode; reset form to original values when canceling
+const handleEditToggle = () => {
     if (isEditing) {
       // Reset form to original values when canceling
       setEditForm({
@@ -165,14 +175,16 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ subscription }) => {
     setSuccessMessage(null);
   };
 
-  const handleFormChange = (field: string, value: string) => {
+  // Controlled inputs: update local edit form state per field
+const handleFormChange = (field: string, value: string) => {
     setEditForm(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
-  const handleSaveChanges = async () => {
+  // Persist profile edits via API and show success/error feedback
+const handleSaveChanges = async () => {
     try {
       setUpdateLoading(true);
       setError(null);
@@ -198,7 +210,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ subscription }) => {
     }
   };
 
-  async function handleUpgrade() {
+  // Upgrade flow: navigate to local plans page for selection
+async function handleUpgrade() {
     // Redirect to local plans page instead of hitting checkout API
     if (!userProfile?.userId) {
       setCheckoutError("You need to be logged in to upgrade.");
@@ -208,14 +221,24 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ subscription }) => {
     navigate("/plans");
   }
 
-  const [showCancelModal, setShowCancelModal] = useState(false);
+  // Subscription management UI: cancel modal visibility and transient toast messages
+const [showCancelModal, setShowCancelModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "warning" | "info" } | null>(null);
 
-  async function handleManageSubscription() {
+  // Open confirmation modal for subscription cancellation
+async function handleManageSubscription() {
     setShowCancelModal(true);
   }
 
-  async function confirmCancelSubscription() {
+  /*
+  Confirm cancellation flow:
+  - Validates user and resolves subscription/session IDs
+  - Calls backend to cancel Stripe subscription
+  - Syncs cancellation to local backend via updateSubscription
+  - Refreshes subscription from backend or falls back
+  - Moves user to Free plan locally and shows toast
+*/
+async function confirmCancelSubscription() {
     try {
       setCheckoutLoading(true);
       setCheckoutError(null);
@@ -332,8 +355,10 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ subscription }) => {
     }
   }
 
-  if (loading) {
-    return (
+  // Loading state: show spinner and message while fetching profile
+if (loading) {
+    // Main view: profile details, edit form, and subscription management actions
+return (
       <div className="profile-container">
         <div className="loading-state">
           <div className="spinner"></div>
@@ -343,7 +368,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ subscription }) => {
     );
   }
 
-  if (error) {
+  // Error state: show helpful retry with error message
+if (error) {
     return (
       <div className="profile-container">
         <div className="error-state">

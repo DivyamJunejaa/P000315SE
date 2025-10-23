@@ -4,8 +4,12 @@ import { useAuth } from "../auth/AuthProvider";
 import { authLogin, authRegister, authGoogleLogin } from "../services/api";
 import { signInWithGooglePopup } from "../lib/firebase";
 
+// Page: Login — supports email/password sign-in and account registration.
+// Also supports Google OAuth; on success stores auth and redirects appropriately.
 export default function Login() {
+  // UI mode: switch between "login" and "register"
   const [mode, setMode] = useState<"login" | "register">("login");
+  // Local form state for auth and registration fields
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -17,20 +21,24 @@ export default function Login() {
     acceptTandC: false,
     newsLetterSubs: false,
   });
+  // UI helpers for password visibility, error message, and loading spinner
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Navigation, location state for post-login redirect, and auth context
   const nav = useNavigate();
   const loc = useLocation() as any;
   const { login } = useAuth();
   const redirectTo = loc.state?.from?.pathname || "/";
 
+  // Controlled inputs handler
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
+  // Basic validation for both modes; stricter checks when registering
   function validate() {
     if (!/\S+@\S+\.\S+/.test(form.email)) return "Enter a valid email.";
     if (form.password.length < 6) return "Password must be at least 6 characters.";
@@ -45,6 +53,7 @@ export default function Login() {
     return "";
   }
 
+  // Submit handler: validate → call appropriate auth API → store and redirect
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const v = validate();
@@ -74,9 +83,11 @@ export default function Login() {
       }
 
       const { token, user } = response;
+      // Persist session in auth context, then navigate to original destination
       login(token, user ? JSON.stringify(user) : "");
       nav(redirectTo, { replace: true });
     } catch (e: any) {
+      // Normalize API and network errors to a user-friendly message
       const errData = e?.response?.data?.error;
       if (errData && typeof errData === "object" && "message" in errData) {
         setError((errData as any).message);
@@ -88,6 +99,7 @@ export default function Login() {
     }
   }
 
+  // Google OAuth handler: get Firebase ID token → backend login → redirect
   async function onGoogleSignIn() {
     try {
       setError("");
@@ -103,9 +115,11 @@ export default function Login() {
     }
   }
 
+  // Render: mode toggle, form fields, helpers, submit, Google sign-in, links
   return (
     <div style={{ maxWidth: 420, margin: "64px auto" }}>
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        // Tabs: choose between Sign In and Create Account
         <button
           type="button"
           onClick={() => setMode("login")}
@@ -143,6 +157,7 @@ export default function Login() {
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
         {mode === "register" && (
           <>
+            {/* Registration-only identity fields */}
             <input
               name="firstName"
               placeholder="First name"
@@ -158,6 +173,7 @@ export default function Login() {
           </>
         )}
 
+        {/* Email is required for both modes */}
         <input
           name="email"
           type="email"
@@ -168,6 +184,7 @@ export default function Login() {
 
         {mode === "register" && (
           <>
+            {/* Registration-only account details */}
             <input
               name="username"
               placeholder="Username"
@@ -181,6 +198,7 @@ export default function Login() {
               onChange={handleChange}
             />
 
+            {/* Settings: Terms acceptance and newsletter opt-in */}
             <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <input
                 type="checkbox"
@@ -206,6 +224,7 @@ export default function Login() {
           </>
         )}
 
+        {/* Password fields */}
         <input
           name="password"
           type={show ? "text" : "password"}
@@ -224,6 +243,7 @@ export default function Login() {
           />
         )}
 
+        {/* Toggle to reveal/hide passwords */}
         <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <input
             type="checkbox"
@@ -233,6 +253,7 @@ export default function Login() {
           Show password
         </label>
 
+        {/* Primary submit action */}
         <button type="submit" disabled={loading}>
           {loading
             ? "Please wait..."
@@ -241,6 +262,7 @@ export default function Login() {
             : "Create Account"}
         </button>
 
+        {/* Optional Google sign-in for login mode */}
         {mode === "login" && (
           <button
             type="button"
@@ -260,6 +282,7 @@ export default function Login() {
           </button>
         )}
 
+        {/* Error feedback and helper links */}
         {error && <p style={{ color: "crimson" }}>{error}</p>}
         {mode === "login" && (
           <p>

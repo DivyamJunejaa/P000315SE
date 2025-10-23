@@ -5,6 +5,12 @@
   "repository": "https://github.com/vercel/examples.git",
   "license": "MIT",
   "private": true,
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:verbose": "jest --verbose"
+  },
   "devDependencies": {
     "@supabase/supabase-js": "^2.57.4",
     "@types/bcrypt": "^6.0.0",

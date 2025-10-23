@@ -281,41 +281,4 @@ export default clientPromise;
  * Local Development:
  * mongodb://localhost:27017/<database>
  * 
- * SERVERLESS CONSIDERATIONS:
- * 
- * 1. Connection Pooling: MongoDB driver maintains a connection pool automatically.
- *    Each serverless function instance reuses connections from the pool.
- * 
- * 2. Cold Starts: First invocation creates new connection. Subsequent calls
- *    within ~5-15 minutes reuse the warm instance and its connections.
- * 
- * 3. Connection Limits: MongoDB Atlas free tier allows 500 connections.
- *    Monitor your connection usage in Atlas dashboard.
- * 
- * 4. Timeout Settings: Consider setting maxIdleTimeMS to match your serverless
- *    function timeout to prevent keeping idle connections.
- * 
- * DEBUGGING:
- * 
- * 1. Enable connection logging by uncommenting event handlers above
- * 2. Check MongoDB Atlas logs for connection patterns
- * 3. Monitor connection pool metrics in production
- * 4. Use MongoDB Compass to verify connection string locally
- * 
- * SECURITY BEST PRACTICES:
- * 
- * 1. Never commit .env.local to version control
- * 2. Use different databases for development and production
- * 3. Create separate database users with minimal required permissions
- * 4. Enable IP whitelist in MongoDB Atlas for production
- * 5. Rotate database passwords periodically
- * 6. Use connection string with retryWrites=true for resilience
- * 
- * PERFORMANCE TIPS:
- * 
- * 1. Create appropriate indexes on frequently queried fields
- * 2. Use projection to limit returned fields
- * 3. Implement pagination for large result sets
- * 4. Monitor slow queries in Atlas Performance Advisor
- * 5. Consider using MongoDB aggregation pipeline for complex queries
  */

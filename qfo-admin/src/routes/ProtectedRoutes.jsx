@@ -1,3 +1,5 @@
+// ProtectedRoute: guards admin pages by checking for a token in localStorage.
+// Supports one-time token handoff via ?token=... and redirects to my-app login when missing.
 import { useEffect, useState} from "react";
 import { Navigate, useLocation } from "react-router-dom";
 
@@ -21,6 +23,7 @@ export default function ProtectedRoute({ children }) {
   }, [location.search, location.pathname, location.hash]);
 
   if (isChecking) {
+    // Lightweight loader while we process token handoff
     return (
       <div style={{ 
         display: 'flex', 
@@ -46,5 +49,6 @@ export default function ProtectedRoute({ children }) {
     return null;
   }
 
+  // Auth OK: render the protected children (AdminLayout + nested routes)
   return children;
 }

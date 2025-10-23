@@ -465,30 +465,4 @@ export const createHandler = (
  * );
  * ```
  * 
- * BEST PRACTICES:
- * 
- * 1. Always use ResponseUtils.send() to send responses
- * 2. Use AuthenticatedRequest type for requireAuth handlers
- * 3. Keep validators simple and focused
- * 4. Use allowedMethods to be explicit about supported methods
- * 5. Log important operations for debugging
- * 6. Extract complex validators into separate functions
- * 7. Use TypeScript for type safety
- * 8. Handle errors in handler and let factory catch unexpected ones
- * 
- * MIDDLEWARE ORDER (IMPORTANT):
- * 
- * The order of middleware execution is:
- * 1. CORS (allows cross-origin requests)
- * 2. OPTIONS handling (CORS preflight)
- * 3. Method validation (405 if not allowed)
- * 4. Body validation (400 if invalid)
- * 5. Authentication (401 if required and missing)
- * 6. Handler execution (your code)
- * 7. Error handling (catches all errors)
- * 
- * This order is optimized for:
- * - Security (auth after CORS but before handler)
- * - Performance (cheap checks first)
- * - User experience (meaningful error messages)
  */

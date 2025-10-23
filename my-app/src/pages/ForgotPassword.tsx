@@ -6,19 +6,25 @@ import { validateEmailDetailed } from "../utils/validation";
 import "../style/Login.css";
 import logo from "../assets/logo.png";
 
+// Page: ForgotPassword — allows users to request a password reset code.
+// Flow: validate email → call API → show feedback → navigate to reset.
 const ForgotPassword: React.FC = () => {
+  // Local state: email input and UI flags (error, success, loading)
   const [email, setEmail] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
+  // Router helper for moving between pages
   const navigate = useNavigate();
 
+  // Validate email before sending a reset request
   const validateForm = (): string => {
     const emailErr = validateEmailDetailed(email.trim());
     if (emailErr) return emailErr;
     return "";
   };
 
+  // Submit handler: runs validation, calls API, persists email, handles errors
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const err = validateForm();
@@ -38,7 +44,7 @@ const ForgotPassword: React.FC = () => {
       });
 
       if (response.success) {
-        // Store email for the reset password page
+        // Store email for the reset password page to prefill later
         localStorage.setItem('resetEmail', email.trim());
         setSuccess(true);
       } else {
@@ -54,6 +60,7 @@ const ForgotPassword: React.FC = () => {
     }
   };
 
+  // Render: logo, title, email field, submit button, helpful links
   return (
     <div className="login-container">
       <form onSubmit={handleSubmit} className="login-card login-mode">

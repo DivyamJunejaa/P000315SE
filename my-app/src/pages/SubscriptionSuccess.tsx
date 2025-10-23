@@ -1,3 +1,10 @@
+/*
+  SubscriptionSuccess: handles post-checkout success flow.
+  - Reads URL params (status, plan, price, session_id, subscription_id)
+  - Persists subscription to localStorage in both legacy and unified formats
+  - Attempts backend sync for authoritative subscription data
+  - Counts down and redirects to profile or login
+*/
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
@@ -6,8 +13,8 @@ import { updateSubscription, syncStripeSubscription } from "../services/api";
 const detectTierFromPlanId = (planId?: string | null): 'free' | 'pro' | 'premium' => {
   const id = String(planId || '').toLowerCase();
   if (!id || id.includes('free') || id === 'price_free') return 'free';
-  const PRO_ID = (process.env.REACT_APP_STRIPE_PRICE_PRO || 'price_1S8tsnQTtrbKnENdYfv6azfr').toLowerCase();
-  const PREMIUM_ID = (process.env.REACT_APP_STRIPE_PRICE_PREMIUM || 'price_1SB17tQTtrbKnENdT7aClaEe').toLowerCase();
+  const PRO_ID = (process.env.REACT_APP_STRIPE_PRICE_PRO || 'price_1SJOoqQTtrbKnENdq6xX75de').toLowerCase();
+  const PREMIUM_ID = (process.env.REACT_APP_STRIPE_PRICE_PREMIUM || 'price_1SJP2sQTtrbKnENdbIpAzwMv').toLowerCase();
   if (id === PRO_ID || id.includes('pro')) return 'pro';
   if (id === PREMIUM_ID || id.includes('premium')) return 'premium';
   return 'free';
@@ -28,6 +35,7 @@ export default function SubscriptionSuccess() {
   const [syncSuccess, setSyncSuccess] = useState(false);
   const hasSyncedRef = useRef(false);
   
+  // Parse subscription-related parameters from the URL for post-checkout handling
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get("session_id");
   const status = params.get("status") || "success";
@@ -41,6 +49,7 @@ export default function SubscriptionSuccess() {
 
   // Plan display helpers now centralized
 
+  // On mount: persist local subscription snapshot and start redirect countdown
   useEffect(() => {
     // Store subscription information in localStorage
     if (status === "success" && plan) {
@@ -120,11 +129,13 @@ export default function SubscriptionSuccess() {
       });
     }, 1000);
 
+    // Render success message with countdown and manual redirect option
     return () => clearInterval(timer);
   }, [status, plan, price, sessionId, navigate, user]);
 
   // Sync subscription to backend service
   useEffect(() => {
+    // Sync with backend: fetch Stripe details and reconcile local state
     const doSync = async () => {
       if (hasSyncedRef.current) return;
       if (status !== "success" || !plan) return;
@@ -234,6 +245,7 @@ export default function SubscriptionSuccess() {
     doSync();
   }, [status, plan, sessionId, user]);
 
+  // Allow user to skip countdown and go to the next page immediately
   const handleRedirectNow = () => {
     if (user) {
       console.info('Manual redirect: opening profile');
@@ -244,6 +256,7 @@ export default function SubscriptionSuccess() {
     }
   };
 
+  // Render success message with countdown and manual redirect option
   return (
     <div className="login-container">
       <div className="login-card login-mode">

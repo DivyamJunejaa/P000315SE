@@ -1,3 +1,5 @@
+// POST /api/auth/login — development stub login that returns a JWT
+// Do not enable in production without proper user verification.
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { generateToken } from '../../lib/auth'
 
@@ -7,7 +9,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ success: false, message: 'Method Not Allowed', statusCode: 405 })
   }
 
-  const isProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production'
+  // Safety checks: only allow stub login in safe environments.
+const isProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production'
   const hasJwtSecret = Boolean(process.env.JWT_SECRET)
   const allowStubLogin = ['1', 'true', 'yes'].includes(String(process.env.ALLOW_STUB_LOGIN || '').toLowerCase())
   if (isProd && !hasJwtSecret) {
@@ -29,6 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     createdAt: new Date().toISOString(),
   }
 
-  const token = generateToken(user)
+  // Issue a JWT for the stubbed admin user.
+const token = generateToken(user)
   return res.status(200).json({ success: true, message: 'Login successful', statusCode: 200, data: { token, user } })
 }

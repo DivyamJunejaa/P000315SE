@@ -6,12 +6,18 @@ import SupportPanel from "../components/SupportPanel";
 import "../style/Nav.css";
 import logo from "../assets/logo.png";
 
-// Local plan helper (removed shared planMapping)
+/**
+ * Determines user tier from Stripe price ID
+ * Falls back to 'free' if planId is missing or invalid
+ * Checks against environment variables for Pro/Premium price IDs
+ */
 const detectTierFromPlanId = (planId?: string | null): 'free' | 'pro' | 'premium' => {
   const id = String(planId || '').toLowerCase();
   if (!id || id.includes('free') || id === 'price_free') return 'free';
-  const PRO_ID = (process.env.REACT_APP_STRIPE_PRICE_PRO || 'No REACT_APP_STRIPE_PRICE_PRO found in env').toLowerCase();
-  const PREMIUM_ID = (process.env.REACT_APP_STRIPE_PRICE_PREMIUM || 'No REACT_APP_STRIPE_PRICE_PREMIUM ').toLowerCase();
+  
+  // Compare against environment-configured Stripe price IDs
+  const PRO_ID = (process.env.REACT_APP_STRIPE_PRICE_PRO || 'price_1SJOoqQTtrbKnENdq6xX75de').toLowerCase();
+  const PREMIUM_ID = (process.env.REACT_APP_STRIPE_PRICE_PREMIUM || 'price_1SJP2sQTtrbKnENdbIpAzwMv').toLowerCase();
   if (id === PRO_ID || id.includes('pro')) return 'pro';
   if (id === PREMIUM_ID || id.includes('premium')) return 'premium';
   return 'free';
@@ -26,10 +32,14 @@ const Navbar = () => {
   const location = useLocation();
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Fetch user subscription when logged in
+  /**
+   * Fetch and set user subscription plan on mount or when user changes
+   * Defaults to 'free' if user is logged out or subscription fetch fails
+   * Re-runs whenever user authentication state changes
+   */
   useEffect(() => {
     const loadUserSubscription = async () => {
-      // Only fetch if user is logged in
+      // Non-authenticated users default to free tier
       if (!user) {
         setUserPlan('free');
         return;
@@ -43,7 +53,7 @@ const Navbar = () => {
           const planId = result.data.planId || '';
           const plan = detectTierFromPlanId(planId);
 
-          console.log('📍 Navbar - Loaded subscription:', {
+          console.log('Navbar - Loaded subscription:', {
             planId,
             detectedPlan: plan,
             subscriptionData: result.data
@@ -51,13 +61,11 @@ const Navbar = () => {
 
           setUserPlan(plan);
         } else {
-          // No subscription = free user
-          console.log('📍 Navbar - No subscription found, defaulting to free');
+          // No active subscription means free tier
           setUserPlan('free');
         }
       } catch (err) {
-        console.error('Failed to load subscription in Navbar:', err);
-        // On error, default to free
+         // Fail gracefully to free tier on error
         setUserPlan('free');
       } finally {
         setIsLoadingPlan(false);
@@ -65,22 +73,25 @@ const Navbar = () => {
     };
 
     loadUserSubscription();
-  }, [user]); // Re-fetch when user changes (login/logout)
+  }, [user]); // Dependency: refetch when user login state changes
 
-  // Check if user has access to support (Pro or Premium)
+  // Check if user has access to support Pro or Premium features
   const hasSupportAccess = userPlan === 'pro' || userPlan === 'premium';
 
-  console.log('🔍 Navbar render:', {
+  console.log(' Navbar render:', {
     user: user?.email,
     userPlan,
     hasSupportAccess,
     isLoadingPlan
   });
 
-  // Handle support click
+  /**
+   * Opens support panel and closes mobile menu
+   * Only callable when user has Pro/Premium access
+   */
   const handleSupportClick = () => {
-    setMenuOpen(false); // Close menu
-    console.log('✅ Opening support panel for plan:', userPlan);
+    setMenuOpen(false); 
+    console.log('Opening support panel for plan:', userPlan);
     setSupportOpen(true);
   };
 
@@ -127,12 +138,13 @@ const Navbar = () => {
               <span></span>
             </div>
 
+            {/* Dropdown menu with navigation links */}
             <div className={`menu-content ${menuOpen ? "visible" : ""}`}>
               <Link to="/project" onClick={() => setMenuOpen(false)}>
                 Dashboard
               </Link>
 
-              {/* Support Button - Only show for Pro & Premium */}
+              {/* Support Button - Feature-gated for Pro & Premium users only */}
               {hasSupportAccess && (
                 <button 
                   className="menu-link-button"
@@ -154,7 +166,7 @@ const Navbar = () => {
         )}
       </nav>
 
-      {/* Support Panel - Only render for Pro & Premium */}
+      {/* Support Panel - Conditionally rendered for Pro & Premium tiers only */}
       {supportOpen && hasSupportAccess && (
         <SupportPanel 
           onClose={() => setSupportOpen(false)}

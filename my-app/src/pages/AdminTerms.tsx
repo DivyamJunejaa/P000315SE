@@ -1,3 +1,9 @@
+/*
+  AdminTerms: simple admin editor for Terms and Conditions.
+  - Loads current terms on mount
+  - Requires authenticated admin for updates
+  - Saves changes via API and shows feedback
+*/
 import { useState, useEffect } from "react";
 import { fetchTerms, updateTerms } from "../services/api";
 import { useAuth } from "../auth/AuthProvider";

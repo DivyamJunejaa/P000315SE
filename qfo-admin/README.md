@@ -1,12 +1,51 @@
-# React + Vite
+# QFO Admin (React + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Admin dashboard frontend. This README gives simple steps to run locally and connect to the backend.
 
-Currently, two official plugins are available:
+## Quick Start
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Prerequisites: Node.js 18+, npm.
+- Install dependencies: `npm install`
+- Copy `.env.example` to `.env` and set values (see below).
+- Run dev server: `npm run dev`
+- Open `http://localhost:5173`
 
-## Expanding the ESLint configuration
+## Environment
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Create `.env` with minimal values to work locally:
+
+```
+# Backend API base URL; for local Express dev server
+VITE_API_BASE_URL=http://localhost:4001
+
+# Unified login URL for your app (used by ProtectedRoute)
+VITE_MYAPP_LOGIN_URL=http://localhost:3000/login
+
+# Optional: bypass ProtectedRoute in dev (not recommended in prod)
+VITE_DEV_BYPASS_AUTH=false
+```
+
+Notes:
+- If using a proxy, you can keep requests relative (e.g., `/api/...`). Otherwise set `VITE_API_BASE_URL` to your backend.
+- `ProtectedRoute` expects a token in `localStorage` under `qfo_token`. You can also pass `?token=...` once; it will store and clean the URL.
+
+## Common Scripts
+
+- `npm run dev` — start Vite dev server.
+- `npm run build` — build production assets.
+- `npm run preview` — preview the production build locally.
+- `npm run lint` — run ESLint.
+
+## Pages & Routes
+
+- `/admin` — admin dashboard (protected).
+- `/admin/terms` — manage terms.
+- `/admin/newsletter` — manage newsletter.
+
+Routing is defined in `src/app/routes.jsx` and gate-kept by `src/routes/ProtectedRoutes.jsx`.
+
+## Troubleshooting
+
+- Redirected to login: set `VITE_MYAPP_LOGIN_URL` in `.env` and ensure a `qfo_token` exists.
+- API calls failing: check `VITE_API_BASE_URL` or proxy settings; confirm backend is running.
+- UI not loading: re-install deps (`rm -rf node_modules && npm install`) and retry `npm run dev`.

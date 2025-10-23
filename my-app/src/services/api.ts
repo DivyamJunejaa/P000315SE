@@ -562,7 +562,6 @@ export const updateSubscription = async (data: {
 }) => {
   try {
     // Backend expects EXACT camelCase keys as below
-    debugger;
     const payload = {
       subscriptionId: data.subscriptionId,
       email: data.email,
@@ -619,13 +618,13 @@ export const updateSubscription = async (data: {
     {
       id: "starter",
       name: "Starter",
-      stripe_price_id_monthly: "price_1S8tsnQTtrbKnENdYfv6azfr",
+      stripe_price_id_monthly: "price_1SJP2sQTtrbKnENdbIpAzwMv",
       features: ["Form & Visual editor", "Export diagram"],
     },
     {
       id: "pro",
       name: "Pro",
-      stripe_price_id_monthly: "price_1SB17tQTtrbKnENdT7aClaEe",
+      stripe_price_id_monthly: "price_1SJP2sQTtrbKnENdbIpAzwMv",
       features: ["Everything in Starter", "Advanced customization"],
     },
   ];
