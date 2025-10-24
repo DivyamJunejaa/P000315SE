@@ -10,6 +10,13 @@ export default defineConfig({
     coverage: {
       reporter: ['text', 'html'],
       provider: 'v8',
+      thresholds: {
+        lines: 75,
+      },
+      exclude: [
+        'src/pages/**',
+        'src/features/admin/hooks/**',
+      ],
     },
   },
 });
