@@ -52,6 +52,7 @@ export default function SubscriptionPlans() {
     }
   }, []);
 
+  // Read userId snapshot from localStorage
   const getUserId = () => {
     try {
       const raw = localStorage.getItem("user");
@@ -188,6 +189,7 @@ export default function SubscriptionPlans() {
           />
         )}
 
+        {/* Plans grid listing */}
         <div className="plans-grid">
           {plans.map((p) => (
             <div key={p.id} className={`plan-card ${p.id}`}>
@@ -234,6 +236,7 @@ export default function SubscriptionPlans() {
           ))}
         </div>
 
+        {/* Back to workspace link */}
         <div style={{ textAlign: "center", marginTop: 16 }}>
           <a href="/project" style={{ color: "#007bff", textDecoration: "underline" }}>Back to Workspace</a>
         </div>

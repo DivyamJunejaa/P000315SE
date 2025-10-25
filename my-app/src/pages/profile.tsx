@@ -66,6 +66,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ subscription }) => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  // Load profile and subscription data on mount
   useEffect(() => {
     const loadUserProfile = async () => {
       try {
@@ -150,6 +151,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ subscription }) => {
     loadSubscriptionData();
   }, []);
 
+  // Toggle edit mode and reset form when canceling
   const handleEditToggle = () => {
     if (isEditing) {
       // Reset form to original values when canceling
@@ -165,6 +167,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ subscription }) => {
     setSuccessMessage(null);
   };
 
+  // Handle local form field changes
   const handleFormChange = (field: string, value: string) => {
     setEditForm(prev => ({
       ...prev,
@@ -172,6 +175,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ subscription }) => {
     }));
   };
 
+  // Persist profile updates to backend
   const handleSaveChanges = async () => {
     try {
       setUpdateLoading(true);

@@ -4,8 +4,11 @@ import { useAuth } from "../auth/AuthProvider";
 import { authLogin, authRegister, authGoogleLogin } from "../services/api";
 import { signInWithGooglePopup } from "../lib/firebase";
 
+// Login page: toggles between sign in and register
 export default function Login() {
+  // Mode toggle between login and register
   const [mode, setMode] = useState<"login" | "register">("login");
+  // Aggregate form state for all inputs
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -17,8 +20,11 @@ export default function Login() {
     acceptTandC: false,
     newsLetterSubs: false,
   });
+  // Toggle to show/hide password fields
   const [show, setShow] = useState(false);
+  // Error feedback string
   const [error, setError] = useState("");
+  // Loading state for submissions
   const [loading, setLoading] = useState(false);
 
   const nav = useNavigate();
@@ -31,6 +37,7 @@ export default function Login() {
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
+  // Validates inputs for current mode
   function validate() {
     if (!/\S+@\S+\.\S+/.test(form.email)) return "Enter a valid email.";
     if (form.password.length < 6)
@@ -47,6 +54,7 @@ export default function Login() {
     return "";
   }
 
+  // Handles login/register form submission and redirects on success
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const v = validate();
@@ -90,6 +98,7 @@ export default function Login() {
     }
   }
 
+  // Google OAuth sign-in flow
   async function onGoogleSignIn() {
     try {
       setError("");
@@ -107,6 +116,7 @@ export default function Login() {
 
   return (
     <div style={{ maxWidth: 420, margin: "64px auto" }}>
+      {/* Mode toggle buttons */}
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         <button
           type="button"
@@ -142,6 +152,7 @@ export default function Login() {
 
       <h1>{mode === "login" ? "Sign In" : "Create your account"}</h1>
 
+      {/* Auth form fields */}
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
         {mode === "register" && (
           <>
@@ -226,6 +237,7 @@ export default function Login() {
           />
         )}
 
+        {/* Password visibility toggle */}
         <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <input
             type="checkbox"
@@ -235,6 +247,7 @@ export default function Login() {
           Show password
         </label>
 
+        {/* Submit button for login/register */}
         <button type="submit" disabled={loading}>
           {loading
             ? "Please wait..."
@@ -243,6 +256,7 @@ export default function Login() {
             : "Create Account"}
         </button>
 
+        {/* Optional Google sign-in */}
         {mode === "login" && (
           <button
             type="button"

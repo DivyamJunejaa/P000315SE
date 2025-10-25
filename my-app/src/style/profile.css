@@ -287,7 +287,7 @@
 }
 
 .subscription-card:hover {
-  transform: translateY(-2px);
+  transform: none;
   box-shadow: var(--shadow-light);
 }
 
@@ -299,7 +299,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 24px; /* increase spacing to avoid overlap with actions */
 }
 
 .plan-name {
@@ -317,6 +317,8 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  position: relative; /* ensure normal flow stacking */
+  z-index: 0;
 }
 
 .status-active {
@@ -358,6 +360,13 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  margin-top: 8px; /* add spacing from header */
+}
+
+/* Keep action buttons static within subscription card to prevent overlap */
+.subscription-card .btn-primary:hover,
+.subscription-card .btn-secondary:hover {
+  transform: none;
 }
 
 .btn-primary, .btn-secondary, .btn-edit, .btn-save-profile, .btn-cancel {

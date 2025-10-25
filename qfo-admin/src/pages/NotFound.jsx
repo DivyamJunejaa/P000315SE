@@ -1,3 +1,4 @@
+// Minimal 404 page: shown when no route matches
 export default function NotFound() {
     return (
       <div style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>

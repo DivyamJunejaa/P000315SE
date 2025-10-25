@@ -39,11 +39,13 @@ const ResetPassword: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
+  // Handle input changes for reset form
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
+  // Validate reset form fields
   const validateForm = (): string => {
     if (!form.email.trim()) return "Email is required. Please go back to the forgot password page.";
     if (!form.token.trim()) return "Please enter your reset code.";
@@ -56,6 +58,7 @@ const ResetPassword: React.FC = () => {
     return "";
   };
 
+  // Submit new password to backend
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const err = validateForm();
@@ -107,6 +110,7 @@ const ResetPassword: React.FC = () => {
           Enter your reset code and new password.
         </p>
 
+        {/* Email address */}
         <label htmlFor="email" className="formRow">Email Address</label>
         <input
           id="email"
@@ -119,6 +123,7 @@ const ResetPassword: React.FC = () => {
           required
         />
 
+        {/* Reset code */}
         <label htmlFor="token" className="formRow">Reset Code</label>
         <input
           id="token"
@@ -132,6 +137,7 @@ const ResetPassword: React.FC = () => {
           required
         />
 
+        {/* New password */}
         <label htmlFor="newPassword" className="formRow">New Password</label>
         <input
           id="newPassword"
@@ -145,6 +151,7 @@ const ResetPassword: React.FC = () => {
           required
         />
 
+        {/* Confirm new password */}
         <label htmlFor="confirmPassword" className="formRow">Confirm New Password</label>
         <input
           id="confirmPassword"
@@ -156,6 +163,7 @@ const ResetPassword: React.FC = () => {
           required
         />
 
+        {/* Toggle showing passwords */}
         <div className="show-password" style={{ marginBottom: "20px" }}>
           <label>
             <input
@@ -168,10 +176,12 @@ const ResetPassword: React.FC = () => {
           </label>
         </div>
 
+        {/* Submit reset */}
         <button type="submit" className="submit-btn" disabled={loading}>
           {loading ? "Resetting..." : "Reset Password"}
         </button>
 
+        {/* Feedback messages */}
         {error && <p className="error">{error}</p>}
         {success && (
           <p className="success">
@@ -179,6 +189,7 @@ const ResetPassword: React.FC = () => {
           </p>
         )}
 
+        {/* Links to aux pages */}
         <div style={{ textAlign: "center", marginTop: "20px" }}>
           <button 
             type="button" 

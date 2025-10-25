@@ -1,31 +1,56 @@
-# Node.js Hello World
+# Stripe Backend (Vercel Functions)
 
-Simple Node.js + Vercel example that returns a "Hello World" response.
+Lightweight serverless APIs for Stripe integration: create checkout sessions, read/update subscriptions, and cancel subscriptions.
 
-## How to Use
+## Quick Start
 
-You can choose from one of the following two methods to use this repository:
+- Prerequisites: Node.js 18+, Stripe account (test mode), Stripe CLI, Vercel CLI (optional).
+- Install dependencies: `npm install`
+- Create `.env` at project root (see example below).
+- Run locally with Vercel dev: `vercel dev` (recommended)
+- Or use any serverless runtime that supports `@vercel/node` handlers.
 
-### One-Click Deploy
+## Environment
 
-Deploy the example using [Vercel](https://vercel.com?utm_source=github&utm_medium=readme&utm_campaign=vercel-examples):
+Create `.env` with at least:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/git/external?repository-url=https://github.com/vercel/examples/tree/main/solutions/node-hello-world&project-name=node-hello-world&repository-name=node-hello-world)
-
-### Clone and Deploy
-
-```bash
-git clone https://github.com/vercel/examples/tree/main/solutions/node-hello-world
+```
+STRIPE_SECRET_KEY=sk_test_...
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+FRONTEND_ORIGIN=http://localhost:5173
 ```
 
-Install the Vercel CLI:
+- `STRIPE_SECRET_KEY` enables real Stripe calls; without it, APIs return config errors.
+- `ALLOWED_ORIGINS` controls CORS; include your frontend origin(s).
+- `FRONTEND_ORIGIN` helps the checkout flow build correct redirect URLs.
 
-```bash
-npm i -g vercel
+## Available Endpoints
+
+- `POST /api/payment/create-checkout-session` — creates a Checkout Session.
+- `POST /api/payment/update-subscription` — sync details from Stripe (by `session_id` or `subscription_id`).
+- `POST /api/payment/cancel-subscription` — cancels a subscription (by `subscription_id` or all for a user).
+- `GET|POST /api/payment/get-subscription` — fetch minimal subscription info.
+- `GET /api/health` — simple health check.
+- `GET /api/hello?name=World` — demo hello endpoint.
+
+## Test Webhooks & Sessions
+
+- Stripe CLI (forward events to a deployed URL or local dev):
+
+```
+stripe login
+stripe listen --forward-to http://localhost:3000/api/webhooks/stripe
 ```
 
-Then run the app at the root of the repository:
+- Checkout testing: use Stripe test cards (e.g., `4242 4242 4242 4242`).
 
-```bash
-vercel dev
-```
+## Development Tips
+
+- CORS: update `api/utils/cors.ts` or `ALLOWED_ORIGINS` to match your local frontend.
+- Errors: APIs return clear JSON messages when `STRIPE_SECRET_KEY` is missing or an operation fails.
+- Tests: run `npm test` or `npm run test:coverage`.
+
+## Deployment
+
+- Deploy on Vercel. Set env vars under Project Settings. Ensure your frontend uses the deployed API URL.
+- Configure a Stripe webhook endpoint to your Vercel URL if you add webhook handlers.

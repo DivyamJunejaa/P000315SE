@@ -1,3 +1,4 @@
+// Protected route: renders child only when authenticated
 import { ReactElement } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "./AuthProvider";

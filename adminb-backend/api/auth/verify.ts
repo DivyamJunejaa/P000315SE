@@ -1,3 +1,4 @@
+// Auth verification endpoint: returns user if authorized
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { verifyAdminAuto } from '../../lib/auth'
 

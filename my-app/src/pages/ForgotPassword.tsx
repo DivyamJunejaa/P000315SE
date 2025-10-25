@@ -13,12 +13,14 @@ const ForgotPassword: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
+  // Validate email input
   const validateForm = (): string => {
     const emailErr = validateEmailDetailed(email.trim());
     if (emailErr) return emailErr;
     return "";
   };
 
+  // Handle reset request submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const err = validateForm();
@@ -66,6 +68,7 @@ const ForgotPassword: React.FC = () => {
           Enter your email address and we'll send you a reset code.
         </p>
 
+        {/* Email input */}
         <label htmlFor="email" className="formRow">Email Address</label>
         <input
           id="email"
@@ -78,10 +81,12 @@ const ForgotPassword: React.FC = () => {
           required
         />
 
+        {/* Submit reset request */}
         <button type="submit" className="submit-btn" disabled={loading}>
           {loading ? "Sending..." : "Send Reset Code"}
         </button>
 
+        {/* Error or success feedback */}
         {error && <p className="error">{error}</p>}
         {success && (
           <div>
@@ -89,6 +94,7 @@ const ForgotPassword: React.FC = () => {
               If this email exists, you will receive a reset code
             </p>
             <div style={{ textAlign: "center", marginTop: "20px" }}>
+              {/* Link to reset page when code is available */}
               <button 
                 type="button" 
                 className="link-button"
@@ -107,6 +113,7 @@ const ForgotPassword: React.FC = () => {
           </div>
         )}
 
+        {/* Back to login link */}
         <div style={{ textAlign: "center", marginTop: "20px" }}>
           <button 
             type="button" 

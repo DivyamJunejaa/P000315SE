@@ -7,6 +7,7 @@ export default function Terms() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Fetch and initialize terms content
   useEffect(() => {
     const loadTerms = async () => {
       try {
@@ -86,6 +87,7 @@ export default function Terms() {
   return (
     <div className="terms-container">
       <div className="terms-content">
+        {/* Render formatted terms text */}
         <div
           className="terms-text"
           dangerouslySetInnerHTML={{
@@ -93,6 +95,7 @@ export default function Terms() {
           }}
         />
 
+        {/* Footer with last updated and close button */}
         <div className="terms-footer">
           <p className="last-updated">
             Last updated: {new Date().toLocaleDateString()}
